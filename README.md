@@ -1,5 +1,41 @@
 # FlagForge — Feature Flag Platform
 
+## Local Development
+
+FlagForge uses a pnpm workspace with two applications:
+
+```text
+frontend/
+backend/
+```
+
+Required local tools:
+
+```text
+Node.js 26.7.0
+pnpm 11.21.0
+Docker
+```
+
+Quick start:
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+pnpm install
+docker compose up -d postgres
+pnpm dev
+```
+
+Local URLs:
+
+```text
+Frontend: http://localhost:5174
+Backend:  http://localhost:3001/api/v1
+Health:   http://localhost:3001/api/v1/health
+```
+
 ## 1. Project Overview
 
 **FlagForge** is a self-hosted feature flag management platform inspired by tools such as LaunchDarkly, Unleash, and Flagsmith.

@@ -1,0 +1,19 @@
+{
+  "name": "flagforge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted feature flag management platform.",
+  "packageManager": "pnpm@11.21.0",
+  "scripts": {
+    "dev": "corepack pnpm --parallel --filter @flagforge/backend --filter @flagforge/frontend dev",
+    "dev:backend": "corepack pnpm --filter @flagforge/backend dev",
+    "dev:frontend": "corepack pnpm --filter @flagforge/frontend dev",
+    "build": "corepack pnpm -r build",
+    "lint": "corepack pnpm -r lint",
+    "test": "corepack pnpm -r test"
+  },
+  "engines": {
+    "node": ">=26.7.0",
+    "pnpm": ">=11.21.0"
+  }
+}
