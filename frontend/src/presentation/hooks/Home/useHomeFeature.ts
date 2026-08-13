@@ -36,7 +36,6 @@ export const useHomeFeature = () => {
     onOrganizationNameChange: setOrganizationName,
     onOrganizationSubmit,
     organizationName,
-    navigate,
     sections: [
       { description: "Create and manage projects and their environments.", label: "Projects", to: "/projects" },
       { description: "Toggle boolean flags and configure rollouts per environment.", label: "Flags", to: "/flags" },

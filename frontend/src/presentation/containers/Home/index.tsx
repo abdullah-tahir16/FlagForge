@@ -1,4 +1,4 @@
-import { ArrowRight, FolderKanban, ScrollText, ToggleLeft, UsersRound } from "lucide-react";
+import { FolderKanban, ScrollText, ToggleLeft, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Common/Button";
@@ -21,7 +21,6 @@ const HomeContainer = (_props: Props) => {
     currentOrganization,
     currentUser,
     isUpdatingOrganization,
-    navigate,
     onLogout,
     onOrganizationNameChange,
     onOrganizationSubmit,
@@ -76,15 +75,6 @@ const HomeContainer = (_props: Props) => {
             </Link>
           );
         })}
-      </div>
-
-      <div className="mt-6">
-        <Button onClick={() => navigate("/projects")} type="button">
-          <span className="inline-flex items-center gap-2">
-            Manage projects
-            <ArrowRight aria-hidden="true" className="h-4 w-4" />
-          </span>
-        </Button>
       </div>
     </AppShell>
   );
