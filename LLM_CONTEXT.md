@@ -66,6 +66,22 @@ Use this structure for frontend domains:
 - Cards should use `rounded-app` or smaller. Do not nest cards inside cards.
 - Ensure text fits within buttons, inputs, panels, and responsive layouts.
 
+## Dashboard UI/UX Rules
+
+- Authenticated routes must render inside the shared dashboard shell. Do not add page-local top navigation when the shell can own workspace, navigation, API status, user context, and logout.
+- Desktop dashboard layout uses a persistent sidebar plus top bar. Mobile layout must keep primary navigation reachable at 375px without horizontal scrolling.
+- Navigation must include icon and label for Overview, Projects, Flags, Environments, and Audit. Disabled navigation states must be visually clear and use `aria-disabled` when a route is unavailable.
+- Active route state cannot rely on color alone. Include a persistent indicator such as a border, rail, background, or font-weight shift.
+- Use `lucide-react` icons for structural actions and navigation. Do not use emoji, decorative ad hoc SVG, or text-only icon stand-ins for common actions. Icon-only buttons need `aria-label` and `title`.
+- Use shared primitives from `frontend/src/presentation/components/Common` for dashboard screens: `PageHeader`, `Toolbar`, `Badge`, `Alert`, `EmptyState`, `Skeleton`, `ConfirmDialog`, and dense row/list primitives.
+- Do not use browser `alert`, `confirm`, or `prompt` for product workflows. Use themed feedback and confirmation components.
+- Loading states should use skeletons where layout size is predictable. Empty states should make the next action visible. Error states should use `Alert`.
+- Destructive actions must use destructive theme tokens and a confirmation dialog with cancel and confirm actions.
+- Keep dashboard surfaces compact. Prefer dense rows, tables, toolbars, and structured panels over marketing sections or oversized cards.
+- Use stable widths, min heights, and grid tracks for rows, buttons, toolbars, badges, dialogs, and forms so loading/error text does not shift layout unexpectedly.
+- Respect reduced motion through shared motion tokens and `prefers-reduced-motion`.
+- Verify app UI at 375px mobile, 1024px desktop, and 1440px desktop when changing shell, auth, project, or environment screens.
+
 ## Backend Guidance
 
 - Use NestJS modules by domain.

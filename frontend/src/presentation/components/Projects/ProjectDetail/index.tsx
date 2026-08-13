@@ -1,7 +1,13 @@
+import { Settings, Trash2 } from "lucide-react";
 import type { Environment } from "../../../../core/types/Environment";
 import type { Project } from "../../../../core/types/Project";
+import Alert from "../../Common/Alert";
+import Badge from "../../Common/Badge";
 import Button from "../../Common/Button";
+import ConfirmDialog from "../../Common/ConfirmDialog";
+import EmptyState from "../../Common/EmptyState";
 import Panel from "../../Common/Panel";
+import Skeleton from "../../Common/Skeleton";
 import EnvironmentList from "../EnvironmentList";
 import ProjectForm from "../ProjectForm";
 
@@ -11,13 +17,16 @@ interface Props {
   environmentsErrorMessage?: string | null;
   environmentValidate: (values: Record<string, string>) => Partial<Record<string, string>>;
   isDeletingProject: boolean;
+  isDeleteDialogOpen: boolean;
   isLoadingEnvironments: boolean;
   isLoadingProject: boolean;
   isUpdatingEnvironment: boolean;
   isUpdatingProject: boolean;
-  onDeleteProject: () => Promise<void>;
+  onCancelDeleteProject: () => void;
+  onConfirmDeleteProject: () => Promise<void>;
   onEnvironmentSubmit: (environmentId: string, values: Record<string, string>) => Promise<void>;
   onProjectSubmit: (values: Record<string, string>) => Promise<void>;
+  onRequestDeleteProject: () => void;
   project?: Project;
   projectErrorMessage?: string | null;
   projectInitialValues: Record<string, string>;
@@ -33,13 +42,16 @@ const ProjectDetail = ({
   environmentsErrorMessage,
   environmentValidate,
   isDeletingProject,
+  isDeleteDialogOpen,
   isLoadingEnvironments,
   isLoadingProject,
   isUpdatingEnvironment,
   isUpdatingProject,
-  onDeleteProject,
+  onCancelDeleteProject,
+  onConfirmDeleteProject,
   onEnvironmentSubmit,
   onProjectSubmit,
+  onRequestDeleteProject,
   project,
   projectErrorMessage,
   projectInitialValues,
@@ -49,11 +61,15 @@ const ProjectDetail = ({
   updatingEnvironmentId
 }: Props) => {
   if (isLoadingProject) {
-    return <Panel className="p-5 text-sm text-app-text-muted">Loading project</Panel>;
+    return <Skeleton rows={5} />;
   }
 
   if (projectErrorMessage || !project) {
-    return <Panel className="p-5 text-sm font-medium text-app-danger">{projectErrorMessage ?? "Project was not found."}</Panel>;
+    return (
+      <Alert tone="danger" title="Project could not be loaded">
+        {projectErrorMessage ?? "Project was not found."}
+      </Alert>
+    );
   }
 
   return (
@@ -61,17 +77,26 @@ const ProjectDetail = ({
       <Panel className="p-5">
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-app-primary">{project.key}</p>
-            <h2 className="mt-1 text-xl font-semibold text-app-text">Project settings</h2>
+            <div className="mb-2 flex flex-wrap gap-2">
+              <Badge tone="primary">{project.key}</Badge>
+              <Badge tone="neutral">Settings</Badge>
+            </div>
+            <h2 className="text-lg font-semibold text-app-text">Project profile</h2>
+            <p className="mt-1 text-sm text-app-text-muted">Name and description used across management surfaces.</p>
           </div>
-          <Button disabled={isDeletingProject} onClick={onDeleteProject} type="button" variant="secondary">
-            {isDeletingProject ? "Deleting" : "Delete project"}
+          <Button disabled={isDeletingProject} onClick={onRequestDeleteProject} type="button" variant="danger">
+            <span className="inline-flex items-center gap-2">
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              {isDeletingProject ? "Deleting" : "Delete project"}
+            </span>
           </Button>
         </div>
         {deleteErrorMessage ? (
-          <p className="mb-4 rounded-app border border-app-danger/20 bg-app-danger-muted px-3 py-2.5 text-sm font-medium text-app-danger">
-            {deleteErrorMessage}
-          </p>
+          <div className="mb-4">
+            <Alert tone="danger" title="Project could not be deleted">
+              {deleteErrorMessage}
+            </Alert>
+          </div>
         ) : null}
         <ProjectForm
           errorMessage={updateProjectErrorMessage}
@@ -84,18 +109,27 @@ const ProjectDetail = ({
       </Panel>
 
       <Panel className="p-5">
-        <div className="mb-5">
-          <h2 className="text-xl font-semibold text-app-text">Environments</h2>
-          <p className="mt-1 text-sm text-app-text-muted">Manage the environment names used by this project.</p>
+        <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-app-text">Environments</h2>
+            <p className="mt-1 text-sm text-app-text-muted">Manage the environment names used by this project.</p>
+          </div>
+          <Badge tone="info">
+            {environments.length} {environments.length === 1 ? "environment" : "environments"}
+          </Badge>
         </div>
-        {isLoadingEnvironments ? <p className="text-sm text-app-text-muted">Loading environments</p> : null}
+        {isLoadingEnvironments ? <Skeleton rows={3} /> : null}
         {!isLoadingEnvironments && environmentsErrorMessage ? (
-          <p className="text-sm font-medium text-app-danger">{environmentsErrorMessage}</p>
+          <Alert tone="danger" title="Environments could not be loaded">
+            {environmentsErrorMessage}
+          </Alert>
         ) : null}
         {!isLoadingEnvironments && !environmentsErrorMessage && environments.length === 0 ? (
-          <p className="rounded-app border border-app-border bg-app-surface-muted px-4 py-5 text-sm text-app-text-muted">
-            No environments yet.
-          </p>
+          <EmptyState
+            description="Default environments should exist for every project after creation."
+            icon={Settings}
+            title="No environments yet"
+          />
         ) : null}
         {!isLoadingEnvironments && !environmentsErrorMessage ? (
           <EnvironmentList
@@ -108,6 +142,15 @@ const ProjectDetail = ({
           />
         ) : null}
       </Panel>
+      <ConfirmDialog
+        confirmLabel="Delete project"
+        description={`Delete ${project.name} and its environments. This action cannot be undone.`}
+        isConfirming={isDeletingProject}
+        onCancel={onCancelDeleteProject}
+        onConfirm={() => void onConfirmDeleteProject()}
+        open={isDeleteDialogOpen}
+        title="Delete project"
+      />
     </div>
   );
 };

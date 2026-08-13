@@ -1,17 +1,18 @@
-import type { FormEvent, PropsWithChildren } from "react";
+import type { FormEvent, FormHTMLAttributes, PropsWithChildren } from "react";
+import Alert from "../Alert";
 
-interface Props extends PropsWithChildren {
+interface Props extends FormHTMLAttributes<HTMLFormElement>, PropsWithChildren {
   errorMessage?: string | null;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
-const Form = ({ children, errorMessage, onSubmit }: Props) => (
-  <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+const Form = ({ children, className = "flex flex-col gap-4", errorMessage, onSubmit, ...props }: Props) => (
+  <form className={className} onSubmit={onSubmit} {...props}>
     {children}
     {errorMessage ? (
-      <p className="rounded-app border border-app-danger/20 bg-app-danger-muted px-3 py-2.5 text-sm font-medium text-app-danger" role="alert">
+      <Alert tone="danger">
         {errorMessage}
-      </p>
+      </Alert>
     ) : null}
   </form>
 );

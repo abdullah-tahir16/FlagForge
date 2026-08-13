@@ -1,5 +1,8 @@
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import AppShell from "../../components/AppShell";
+import Badge from "../../components/Common/Badge";
+import PageHeader from "../../components/Common/PageHeader";
 import ProjectDetail from "../../components/Projects/ProjectDetail";
 import { useProjectDetailFeature } from "../../hooks/ProjectDetail/useProjectDetailFeature";
 
@@ -16,38 +19,41 @@ const ProjectDetailContainer = (_props: Props) => {
       organizationName={feature.currentOrganization?.name ?? "Dashboard"}
       userName={feature.currentUser ? `${feature.currentUser.firstName} ${feature.currentUser.lastName}` : "User"}
     >
-      <section className="mx-auto max-w-6xl px-5 py-8">
-        <div className="mb-8 flex flex-col gap-2">
-          <Link className="w-fit text-sm font-semibold text-app-primary hover:text-app-primary-hover" to="/projects">
+      <PageHeader
+        description="Keep project profile details and environments ready for feature flag configuration."
+        eyebrow={
+          <Link className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-app-primary hover:text-app-primary-hover" to="/projects">
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
             Projects
           </Link>
-          <h1 className="text-3xl font-semibold tracking-normal text-app-text">{feature.title}</h1>
-          <p className="max-w-2xl text-base leading-7 text-app-text-muted">
-            Keep project profile details and environments ready for feature flag configuration.
-          </p>
-        </div>
-        <ProjectDetail
-          deleteErrorMessage={feature.deleteErrorMessage}
-          environments={feature.environments}
-          environmentsErrorMessage={feature.environmentsErrorMessage}
-          environmentValidate={feature.environmentValidate}
-          isDeletingProject={feature.isDeletingProject}
-          isLoadingEnvironments={feature.isLoadingEnvironments}
-          isLoadingProject={feature.isLoadingProject}
-          isUpdatingEnvironment={feature.isUpdatingEnvironment}
-          isUpdatingProject={feature.isUpdatingProject}
-          onDeleteProject={feature.onDeleteProject}
-          onEnvironmentSubmit={feature.onEnvironmentSubmit}
-          onProjectSubmit={feature.onProjectSubmit}
-          project={feature.project}
-          projectErrorMessage={feature.projectErrorMessage}
-          projectInitialValues={feature.projectInitialValues}
-          projectValidate={feature.projectValidate}
-          updateEnvironmentErrorMessage={feature.updateEnvironmentErrorMessage}
-          updateProjectErrorMessage={feature.updateProjectErrorMessage}
-          updatingEnvironmentId={feature.updatingEnvironmentId}
-        />
-      </section>
+        }
+        metadata={feature.project ? <Badge tone="primary">{feature.project.key}</Badge> : null}
+        title={feature.title}
+      />
+      <ProjectDetail
+        deleteErrorMessage={feature.deleteErrorMessage}
+        environments={feature.environments}
+        environmentsErrorMessage={feature.environmentsErrorMessage}
+        environmentValidate={feature.environmentValidate}
+        isDeleteDialogOpen={feature.isDeleteDialogOpen}
+        isDeletingProject={feature.isDeletingProject}
+        isLoadingEnvironments={feature.isLoadingEnvironments}
+        isLoadingProject={feature.isLoadingProject}
+        isUpdatingEnvironment={feature.isUpdatingEnvironment}
+        isUpdatingProject={feature.isUpdatingProject}
+        onCancelDeleteProject={feature.onCancelDeleteProject}
+        onConfirmDeleteProject={feature.onConfirmDeleteProject}
+        onEnvironmentSubmit={feature.onEnvironmentSubmit}
+        onProjectSubmit={feature.onProjectSubmit}
+        onRequestDeleteProject={feature.onRequestDeleteProject}
+        project={feature.project}
+        projectErrorMessage={feature.projectErrorMessage}
+        projectInitialValues={feature.projectInitialValues}
+        projectValidate={feature.projectValidate}
+        updateEnvironmentErrorMessage={feature.updateEnvironmentErrorMessage}
+        updateProjectErrorMessage={feature.updateProjectErrorMessage}
+        updatingEnvironmentId={feature.updatingEnvironmentId}
+      />
     </AppShell>
   );
 };

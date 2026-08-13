@@ -73,6 +73,7 @@ The demo seed creates the `Demo Labs` organization, `Checkout Platform` project,
 ## Project Progress
 
 FlagForge is managed through OpenSpec changes. The high-level roadmap is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+Dashboard UI and UX rules are tracked in [docs/DASHBOARD_UI_UX.md](docs/DASHBOARD_UI_UX.md).
 
 Current workflow:
 
@@ -222,15 +223,10 @@ React Router
 TanStack Query
 Axios
 Tailwind CSS
+React Final Form
+Zod
 Recharts
 Socket.IO Client
-```
-
-Optional:
-
-```text
-React Hook Form
-Zod
 ```
 
 ---
@@ -254,16 +250,8 @@ PostgreSQL
 ORM:
 
 ```text
-Prisma
-```
-
-or:
-
-```text
 TypeORM
 ```
-
-Prisma would be my preferred choice for this project because the schema will contain many relationships and migrations.
 
 ---
 

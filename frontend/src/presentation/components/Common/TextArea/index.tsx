@@ -15,7 +15,7 @@ const TextArea = ({ error, id, label, ...props }: Props) => {
       <textarea
         aria-describedby={error ? errorId : undefined}
         aria-invalid={Boolean(error)}
-        className="min-h-28 resize-y rounded-app border border-app-border bg-app-surface px-3.5 py-2 text-base text-app-text outline-none transition placeholder:text-app-text-muted/70 hover:border-app-primary/50 focus:border-app-primary focus:ring-2 focus:ring-app-focus/70"
+        className="min-h-28 resize-y rounded-app border border-app-border bg-app-surface px-3.5 py-2 text-base text-app-text outline-none transition duration-app placeholder:text-app-text-muted/70 hover:border-app-primary/50 focus:border-app-primary focus:ring-2 focus:ring-app-focus/70"
         id={inputId}
         {...props}
       />

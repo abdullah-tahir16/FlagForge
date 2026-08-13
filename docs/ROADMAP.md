@@ -36,19 +36,20 @@ tasks.md      implementation checklist
 | --- | --- | --- | --- |
 | 0 | `bootstrap-platform-foundation` | Archived | pnpm workspace, `frontend/`, `backend/`, NestJS, Vite, Postgres, Jest |
 | 1 | `add-auth-and-organization` | Archived | registration, login, current user, organization ownership |
-| 2 | `add-projects-and-environments` | Active | project CRUD, default environments, environment management |
-| 3 | `add-boolean-feature-flags` | Planned | boolean flags, per-environment config, enable/disable |
-| 4 | `add-sdk-keys-and-evaluation-api` | Planned | SDK key creation, hashed keys, single/all flag evaluation APIs |
-| 5 | `add-dashboard-flag-management` | Planned | dashboard project/flag views, environment switching, flag toggling |
-| 6 | `add-audit-logs` | Planned | audit events for important management operations |
-| 7 | `add-percentage-rollouts` | Planned | deterministic rollout buckets and rollout configuration |
-| 8 | `add-targeting-rules` | Planned | ordered rules, attribute operators, first-match evaluation |
-| 9 | `add-segments` | Planned | reusable user segments and segment matching |
-| 10 | `add-redis-cache` | Planned | cached environment flag configuration and invalidation |
-| 11 | `add-realtime-updates` | Planned | WebSocket flag update notifications |
-| 12 | `add-js-sdk` | Planned | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
-| 13 | `add-analytics` | Planned | evaluation events, basic dashboard metrics, async processing |
-| 14 | `add-ci-and-docker-polish` | Planned | CI workflow, Docker polish, production-oriented docs |
+| 2 | `add-projects-and-environments` | Archived | project CRUD, default environments, environment management |
+| 3 | `enhance-dashboard-ui-foundation` | Active | strict dashboard UI/UX rules, shared primitives, shell, auth, projects polish |
+| 4 | `add-boolean-feature-flags` | Planned | boolean flags, per-environment config, enable/disable |
+| 5 | `add-sdk-keys-and-evaluation-api` | Planned | SDK key creation, hashed keys, single/all flag evaluation APIs |
+| 6 | `add-dashboard-flag-management` | Planned | dashboard project/flag views, environment switching, flag toggling |
+| 7 | `add-audit-logs` | Planned | audit events for important management operations |
+| 8 | `add-percentage-rollouts` | Planned | deterministic rollout buckets and rollout configuration |
+| 9 | `add-targeting-rules` | Planned | ordered rules, attribute operators, first-match evaluation |
+| 10 | `add-segments` | Planned | reusable user segments and segment matching |
+| 11 | `add-redis-cache` | Planned | cached environment flag configuration and invalidation |
+| 12 | `add-realtime-updates` | Planned | WebSocket flag update notifications |
+| 13 | `add-js-sdk` | Planned | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
+| 14 | `add-analytics` | Planned | evaluation events, basic dashboard metrics, async processing |
+| 15 | `add-ci-and-docker-polish` | Planned | CI workflow, Docker polish, production-oriented docs |
 
 ## MVP Milestones
 

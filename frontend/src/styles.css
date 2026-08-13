@@ -11,22 +11,39 @@
   --color-border: 198 211 205;
   --color-danger: 177 31 60;
   --color-danger-muted: 255 241 242;
+  --color-destructive: 150 25 48;
+  --color-destructive-muted: 255 228 232;
   --color-focus: 125 211 197;
+  --color-info: 23 93 129;
+  --color-info-muted: 230 246 255;
   --color-muted: 226 235 230;
   --color-on-brand: 235 252 248;
+  --color-on-primary: 246 255 253;
+  --color-overlay: 10 36 45;
   --color-primary: 0 107 96;
   --color-primary-hover: 0 85 78;
   --color-primary-muted: 218 243 238;
+  --color-row-hover: 231 241 236;
+  --color-sidebar: 9 31 39;
+  --color-sidebar-active: 229 252 247;
+  --color-sidebar-active-text: 9 64 59;
+  --color-sidebar-border: 42 72 80;
+  --color-sidebar-muted: 145 171 173;
   --color-surface: 255 255 255;
   --color-surface-muted: 237 244 240;
   --color-success: 16 125 70;
   --color-text: 18 30 39;
   --color-text-muted: 79 96 104;
+  --color-topbar: 251 253 252;
   --color-warning: 194 65 12;
   --color-warning-muted: 255 247 237;
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
   --radius-sm: 4px;
   --radius-md: 6px;
   --shadow-button: 0 12px 24px -18px rgb(0 107 96 / 0.9);
+  --shadow-overlay: 0 24px 80px -36px rgb(10 36 45 / 0.7), 0 10px 24px -20px rgb(10 36 45 / 0.5);
   --shadow-sm: 0 1px 2px 0 rgb(18 30 39 / 0.08), 0 18px 44px -32px rgb(10 36 45 / 0.36);
   color: rgb(var(--color-text));
   background: rgb(var(--color-background));
@@ -45,4 +62,15 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }

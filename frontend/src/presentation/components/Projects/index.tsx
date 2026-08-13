@@ -1,7 +1,16 @@
 import { Link } from "react-router-dom";
+import { ExternalLink, FolderKanban, Plus, Trash2 } from "lucide-react";
 import type { Project } from "../../../core/types/Project";
+import Alert from "../Common/Alert";
+import Badge from "../Common/Badge";
 import Button from "../Common/Button";
+import ConfirmDialog from "../Common/ConfirmDialog";
+import DataList from "../Common/DataList";
+import DataRow from "../Common/DataRow";
+import EmptyState from "../Common/EmptyState";
 import Panel from "../Common/Panel";
+import Skeleton from "../Common/Skeleton";
+import Toolbar from "../Common/Toolbar";
 import ProjectForm from "./ProjectForm";
 
 interface Props {
@@ -12,8 +21,11 @@ interface Props {
   isCreatingProject: boolean;
   isDeletingProject: boolean;
   isLoadingProjects: boolean;
+  onCancelDeleteProject: () => void;
+  onConfirmDeleteProject: () => Promise<void>;
   onCreateProjectSubmit: (values: Record<string, string>) => Promise<void>;
-  onDeleteProject: (projectId: string) => Promise<void>;
+  onRequestDeleteProject: (projectId: string) => void;
+  pendingDeleteProjectName?: string | null;
   projects: Project[];
   projectsErrorMessage?: string | null;
   validateProject: (values: Record<string, string>) => Partial<Record<string, string>>;
@@ -27,15 +39,26 @@ const Projects = ({
   isCreatingProject,
   isDeletingProject,
   isLoadingProjects,
+  onCancelDeleteProject,
+  onConfirmDeleteProject,
   onCreateProjectSubmit,
-  onDeleteProject,
+  onRequestDeleteProject,
+  pendingDeleteProjectName,
   projects,
   projectsErrorMessage,
   validateProject
 }: Props) => (
-  <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-    <Panel className="p-5">
-      <h2 className="mb-4 text-xl font-semibold text-app-text">Create project</h2>
+  <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+    <Panel className="h-fit p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-app border border-app-border bg-app-primary-muted text-app-primary">
+          <Plus aria-hidden="true" className="h-4 w-4" />
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold text-app-text">Create project</h2>
+          <p className="text-sm text-app-text-muted">Default environments are added automatically.</p>
+        </div>
+      </div>
       <ProjectForm
         errorMessage={createErrorMessage}
         initialValues={createInitialValues}
@@ -46,59 +69,88 @@ const Projects = ({
       />
     </Panel>
 
-    <Panel className="p-5">
-      <div className="mb-5 flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-app-text">Organization projects</h2>
-        <p className="text-sm text-app-text-muted">Each project starts with Development, Staging, and Production.</p>
-      </div>
+    <section className="min-w-0">
+      <Toolbar
+        actions={
+          <Badge tone="primary">
+            {projects.length} {projects.length === 1 ? "project" : "projects"}
+          </Badge>
+        }
+      >
+        Organization projects
+      </Toolbar>
       {projectsErrorMessage ? (
-        <p className="rounded-app border border-app-danger/20 bg-app-danger-muted px-3 py-2.5 text-sm font-medium text-app-danger">
+        <Alert tone="danger" title="Projects could not be loaded">
           {projectsErrorMessage}
-        </p>
+        </Alert>
       ) : null}
       {deleteErrorMessage ? (
-        <p className="mb-3 rounded-app border border-app-danger/20 bg-app-danger-muted px-3 py-2.5 text-sm font-medium text-app-danger">
-          {deleteErrorMessage}
-        </p>
+        <div className="mb-3">
+          <Alert tone="danger" title="Project could not be deleted">
+            {deleteErrorMessage}
+          </Alert>
+        </div>
       ) : null}
-      {isLoadingProjects ? <p className="text-sm text-app-text-muted">Loading projects</p> : null}
+      {isLoadingProjects ? <Skeleton rows={4} /> : null}
       {!isLoadingProjects && !projectsErrorMessage && projects.length === 0 ? (
-        <p className="rounded-app border border-app-border bg-app-surface-muted px-4 py-5 text-sm text-app-text-muted">
-          No projects yet.
-        </p>
+        <EmptyState
+          description="Create the first workspace project before adding flags and rollout rules."
+          icon={FolderKanban}
+          title="No projects yet"
+        />
       ) : null}
-      <div className="grid gap-3">
+      {!isLoadingProjects && !projectsErrorMessage && projects.length > 0 ? (
+        <DataList>
         {projects.map((project) => (
-          <div
-            className="grid gap-3 rounded-app border border-app-border bg-app-surface-muted p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+          <DataRow
+            actions={
+              <>
+                <Link
+                  className="inline-flex min-h-11 items-center gap-2 rounded-app border border-app-border bg-app-surface px-3 py-2.5 text-sm font-semibold text-app-text transition duration-app hover:border-app-primary/50 hover:bg-app-surface-muted focus:outline-none focus:ring-2 focus:ring-app-focus focus:ring-offset-2"
+                  to={`/projects/${project.id}`}
+                >
+                  <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                  Open
+                </Link>
+                <Button
+                  disabled={isDeletingProject}
+                  onClick={() => onRequestDeleteProject(project.id)}
+                  title={`Delete ${project.name}`}
+                  type="button"
+                  variant="secondary"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                    {isDeletingProject && deletingProjectId === project.id ? "Deleting" : "Delete"}
+                  </span>
+                </Button>
+              </>
+            }
             key={project.id}
           >
-            <div>
-              <Link className="text-base font-semibold text-app-text hover:text-app-primary" to={`/projects/${project.id}`}>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Link className="truncate text-base font-semibold text-app-text hover:text-app-primary" to={`/projects/${project.id}`}>
                 {project.name}
               </Link>
-              <p className="mt-1 text-sm text-app-text-muted">{project.description ?? project.key}</p>
+              <div className="flex flex-wrap gap-2">
+                <Badge>{project.key}</Badge>
+                <span className="min-w-0 text-sm text-app-text-muted">{project.description ?? "No description"}</span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                className="inline-flex min-h-11 items-center rounded-app border border-app-border bg-app-surface px-4 py-2.5 text-sm font-semibold text-app-text transition hover:border-app-primary/50 hover:bg-app-surface-muted"
-                to={`/projects/${project.id}`}
-              >
-                Open
-              </Link>
-              <Button
-                disabled={isDeletingProject && deletingProjectId === project.id}
-                onClick={() => void onDeleteProject(project.id)}
-                type="button"
-                variant="secondary"
-              >
-                {deletingProjectId === project.id ? "Deleting" : "Delete"}
-              </Button>
-            </div>
-          </div>
+          </DataRow>
         ))}
-      </div>
-    </Panel>
+        </DataList>
+      ) : null}
+    </section>
+    <ConfirmDialog
+      confirmLabel="Delete project"
+      description={`Delete ${pendingDeleteProjectName ?? "this project"} and its environments. This action cannot be undone.`}
+      isConfirming={isDeletingProject}
+      onCancel={onCancelDeleteProject}
+      onConfirm={() => void onConfirmDeleteProject()}
+      open={Boolean(pendingDeleteProjectName)}
+      title="Delete project"
+    />
   </div>
 );
 

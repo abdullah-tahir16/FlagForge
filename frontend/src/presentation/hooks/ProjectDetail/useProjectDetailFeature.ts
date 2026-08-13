@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
 import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
@@ -13,15 +14,21 @@ export const useProjectDetailFeature = () => {
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const environments = useEnvironmentUseCase(projectId);
   const projects = useProjectUseCase(projectId);
 
-  const onDeleteProject = async () => {
-    if (!projectId || !window.confirm("Delete this project?")) {
+  const onCancelDeleteProject = () => {
+    setIsDeleteDialogOpen(false);
+  };
+
+  const onConfirmDeleteProject = async () => {
+    if (!projectId) {
       return;
     }
 
     await projects.deleteProject(projectId);
+    setIsDeleteDialogOpen(false);
     navigate("/projects");
   };
 
@@ -32,6 +39,10 @@ export const useProjectDetailFeature = () => {
   const onLogout = async () => {
     await auth.logout();
     navigate("/login");
+  };
+
+  const onRequestDeleteProject = () => {
+    setIsDeleteDialogOpen(true);
   };
 
   const onProjectSubmit = async (values: Record<string, string>) => {
@@ -54,10 +65,13 @@ export const useProjectDetailFeature = () => {
     isLoadingProject: projects.isLoadingProject,
     isUpdatingEnvironment: environments.isUpdatingEnvironment,
     isUpdatingProject: projects.isUpdatingProject,
-    onDeleteProject,
+    isDeleteDialogOpen,
+    onCancelDeleteProject,
+    onConfirmDeleteProject,
     onEnvironmentSubmit,
     onLogout,
     onProjectSubmit,
+    onRequestDeleteProject,
     project: projects.project,
     projectErrorMessage: projects.projectError ? "Project could not be loaded." : null,
     projectId,

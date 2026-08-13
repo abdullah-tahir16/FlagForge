@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
 import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
@@ -11,19 +12,34 @@ export const useProjectsFeature = () => {
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
+  const [pendingDeleteProjectId, setPendingDeleteProjectId] = useState<string | null>(null);
   const projects = useProjectUseCase();
+
+  const pendingDeleteProject = useMemo(
+    () => projects.projects.find((project) => project.id === pendingDeleteProjectId),
+    [pendingDeleteProjectId, projects.projects]
+  );
 
   const onCreateProjectSubmit = async (values: Record<string, string>) => {
     const project = await projects.createProject(projectFormSchema.parse(values));
     navigate(`/projects/${project.id}`);
   };
 
-  const onDeleteProject = async (projectId: string) => {
-    if (!window.confirm("Delete this project?")) {
+  const onCancelDeleteProject = () => {
+    setPendingDeleteProjectId(null);
+  };
+
+  const onConfirmDeleteProject = async () => {
+    if (!pendingDeleteProjectId) {
       return;
     }
 
-    await projects.deleteProject(projectId);
+    await projects.deleteProject(pendingDeleteProjectId);
+    setPendingDeleteProjectId(null);
+  };
+
+  const onRequestDeleteProject = (projectId: string) => {
+    setPendingDeleteProjectId(projectId);
   };
 
   const onLogout = async () => {
@@ -44,9 +60,12 @@ export const useProjectsFeature = () => {
     isCreatingProject: projects.isCreatingProject,
     isDeletingProject: projects.isDeletingProject,
     isLoadingProjects: projects.isLoadingProjects,
+    onCancelDeleteProject,
+    onConfirmDeleteProject,
     onCreateProjectSubmit,
-    onDeleteProject,
     onLogout,
+    onRequestDeleteProject,
+    pendingDeleteProjectName: pendingDeleteProject?.name ?? null,
     projects: projects.projects,
     projectsErrorMessage: projects.projectsError ? "Projects could not be loaded." : null,
     title: "Projects",
