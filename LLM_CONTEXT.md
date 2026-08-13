@@ -149,6 +149,21 @@ Use this structure for frontend domains:
 - The frontend should centralize query invalidation decisions instead of adding stream handling to individual pages. Invalidate matching flag, flag detail, targeting rule, segment list/detail/options, and audit log query families.
 - Ignore events from other organizations. A stream outage should degrade silently and retry with bounded backoff while the user remains authenticated.
 
+## Analytics
+
+- Analytics records SDK evaluation activity in PostgreSQL after evaluation results are computed.
+- Analytics collection is best effort. Insert failures must never change single-flag or all-flags SDK evaluation responses.
+- Single-flag evaluation records one event for the requested flag. All-flags evaluation records one event per returned flag.
+- Analytics events must include organization id, project id, environment id, SDK key id, flag key, served boolean value, evaluation reason, evaluation type, and occurrence time.
+- Analytics events must not persist raw SDK keys, raw user ids, or arbitrary evaluation context attributes.
+- The authenticated project analytics read endpoint is `GET /api/v1/projects/:projectId/analytics/overview`.
+- Supported analytics ranges are `24h`, `7d`, and `30d`; default to `7d`.
+- Analytics overview filters are `environmentId`, `flagKey`, and `range`.
+- Analytics overview responses should include total evaluations, true count, false count, reason breakdown, top flags, and time buckets.
+- Dashboard analytics routes live under `/projects/:projectId/analytics` inside the shared dashboard shell.
+- Analytics UI should use compact metric panels, token-driven filter controls, alert/skeleton/empty states, and lightweight visual bars built from shared theme tokens.
+- Do not add external charting, analytics queues, retention jobs, SDK analytics batching, or raw context capture without a dedicated OpenSpec change.
+
 ## JavaScript SDK
 
 - Keep first-party SDK packages under `packages/`; the JavaScript SDK lives at `packages/js-sdk/` and is named `@flagforge/js-sdk`.
@@ -162,7 +177,7 @@ Use this structure for frontend domains:
 - SDK evaluation methods must fail safely. Network errors, timeouts, unauthorized responses, server errors, and malformed responses return fallback values instead of throwing from normal evaluation calls.
 - `isEnabled` returns only a boolean. Use `evaluate` and `evaluateAll` for reason metadata, environment metadata, and fallback/error details.
 - Use global `fetch` by default and allow an injected fetch implementation for tests and custom runtimes.
-- The first SDK is request-time evaluation only. Do not add polling, realtime streams, local persistent cache, analytics batching, or React providers without a separate OpenSpec change.
+- The first SDK is request-time evaluation only. Do not add polling, realtime streams, local persistent cache, client-side analytics batching, or React providers without a separate OpenSpec change.
 
 ## Backend Guidance
 

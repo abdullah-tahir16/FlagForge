@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { AnalyticsService } from "../analytics/analytics.service";
+import { EvaluationEventType } from "../analytics/evaluation-event-type.enum";
 import {
   CachedEvaluationFlag,
   CachedEvaluationFlagConfig,
@@ -32,7 +34,10 @@ type DirectAttributeRule = CachedEvaluationTargetingRule & {
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private readonly evaluationSnapshotLoader: EvaluationSnapshotLoader) {}
+  constructor(
+    private readonly evaluationSnapshotLoader: EvaluationSnapshotLoader,
+    private readonly analyticsService: AnalyticsService
+  ) {}
 
   async evaluateOne(
     context: SdkEvaluationContext,
@@ -43,16 +48,32 @@ export class EvaluationsService {
     const featureFlag = snapshot.flags.find((flag) => flag.key === flagKey);
 
     if (!featureFlag) {
-      return this.toSingleResponse(context, flagKey, false, "FLAG_NOT_FOUND");
+      const response = this.toSingleResponse(context, flagKey, false, "FLAG_NOT_FOUND");
+      await this.recordEvaluation(context, flagKey, response.value, response.reason, EvaluationEventType.Single);
+
+      return response;
     }
 
     if (!featureFlag.config) {
-      return this.toSingleResponse(context, featureFlag.key, false, "CONFIG_NOT_FOUND");
+      const response = this.toSingleResponse(context, featureFlag.key, false, "CONFIG_NOT_FOUND");
+      await this.recordEvaluation(context, featureFlag.key, response.value, response.reason, EvaluationEventType.Single);
+
+      return response;
     }
 
     const evaluated = this.evaluateFlag(context, { ...featureFlag, config: featureFlag.config }, evaluationContext);
 
-    return this.toSingleResponse(context, featureFlag.key, evaluated.value, evaluated.reason, evaluated.targetingRule, evaluated.segment);
+    const response = this.toSingleResponse(
+      context,
+      featureFlag.key,
+      evaluated.value,
+      evaluated.reason,
+      evaluated.targetingRule,
+      evaluated.segment
+    );
+    await this.recordEvaluation(context, featureFlag.key, response.value, response.reason, EvaluationEventType.Single);
+
+    return response;
   }
 
   async evaluateAll(
@@ -72,12 +93,56 @@ export class EvaluationsService {
       reasons[featureFlag.key] = evaluated;
     });
 
-    return {
+    const response = {
       environment: this.toEnvironmentResponse(context),
       evaluatedAt: new Date(),
       flags,
       reasons
     };
+    await this.recordEvaluations(
+      context,
+      Object.entries(response.reasons).map(([flagKey, reason]) => ({
+        flagKey,
+        reason: reason.reason,
+        value: reason.value
+      })),
+      EvaluationEventType.All
+    );
+
+    return response;
+  }
+
+  private async recordEvaluation(
+    context: SdkEvaluationContext,
+    flagKey: string,
+    value: boolean,
+    reason: EvaluationReason,
+    evaluationType: EvaluationEventType
+  ): Promise<void> {
+    await this.recordEvaluations(context, [{ flagKey, reason, value }], evaluationType);
+  }
+
+  private async recordEvaluations(
+    context: SdkEvaluationContext,
+    values: { flagKey: string; reason: EvaluationReason; value: boolean }[],
+    evaluationType: EvaluationEventType
+  ): Promise<void> {
+    try {
+      await this.analyticsService.recordEvaluations(
+        values.map((value) => ({
+          environmentId: context.environment.id,
+          evaluationType,
+          flagKey: value.flagKey,
+          organizationId: context.environment.project.organizationId,
+          projectId: context.environment.projectId,
+          reason: value.reason,
+          sdkKeyId: context.sdkKey.id,
+          value: value.value
+        }))
+      );
+    } catch {
+      // Analytics is best-effort and must not affect SDK evaluation responses.
+    }
   }
 
   private evaluateFlag(

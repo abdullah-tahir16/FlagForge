@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AnalyticsModule } from "../analytics/analytics.module";
 import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { SdkKeysModule } from "../sdk-keys/sdk-keys.module";
@@ -11,7 +12,7 @@ import { SdkAuthService } from "./sdk-auth.service";
 
 @Module({
   controllers: [EvaluationsController],
-  imports: [SdkKeysModule, TypeOrmModule.forFeature([EnvironmentFlagConfig, FeatureFlag, TargetingRule])],
+  imports: [SdkKeysModule, AnalyticsModule, TypeOrmModule.forFeature([EnvironmentFlagConfig, FeatureFlag, TargetingRule])],
   providers: [EvaluationsService, EvaluationSnapshotLoader, SdkAuthService]
 })
 export class EvaluationsModule {}

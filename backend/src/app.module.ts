@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { CqrsModule } from "@nestjs/cqrs";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AnalyticsModule } from "./analytics/analytics.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { databaseConfig } from "./common/database/database.config";
@@ -38,6 +39,7 @@ import { UsersModule } from "./users/users.module";
     EnvironmentsModule,
     FeatureFlagsModule,
     EvaluationsModule,
+    AnalyticsModule,
     SdkKeysModule,
     SegmentsModule,
     TargetingRulesModule,

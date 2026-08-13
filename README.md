@@ -96,6 +96,8 @@ GET /api/v1/audit
 
 GET /api/v1/realtime/events
 
+GET /api/v1/projects/:projectId/analytics/overview
+
 POST /api/v1/sdk/evaluate/:flagKey
 POST /api/v1/sdk/evaluate
 ```
@@ -172,6 +174,18 @@ Authorization: Bearer <access-token>
 ```
 
 The stream publishes best-effort `CONFIGURATION_CHANGED` events for feature flag, environment flag config, targeting rule, segment, and segment condition mutations. Events include organization id, project id, affected environment ids, resource type, resource id, action, and timestamp. The React dashboard listens while authenticated and invalidates matching TanStack Query caches for flags, targeting rules, segments, and audit logs. If the stream disconnects or cannot connect, the dashboard remains usable and retries with bounded backoff.
+
+Analytics records one PostgreSQL event after each SDK evaluation result is computed. Single-flag evaluation records one event; all-flags evaluation records one event per returned flag. Analytics writes are best effort: a failed analytics insert must not change an SDK response.
+
+Analytics events store project, environment, SDK key id, flag key, served boolean value, evaluation reason, evaluation type, and occurrence time. They intentionally do not store raw SDK keys, raw user ids, or arbitrary evaluation context attributes.
+
+Project analytics overview is available from the dashboard and through:
+
+```text
+GET /api/v1/projects/:projectId/analytics/overview?range=7d
+```
+
+Supported ranges are `24h`, `7d`, and `30d`; the default is `7d`. Optional filters are `environmentId` and `flagKey`. The response includes total evaluations, true/false counts, top flags, reason breakdown, and time buckets.
 
 ## Project Progress
 

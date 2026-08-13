@@ -1,4 +1,5 @@
 import { Environment } from "../src/environments/environment.entity";
+import { EvaluationEventType } from "../src/analytics/evaluation-event-type.enum";
 import { EnvironmentFlagConfig } from "../src/feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../src/feature-flags/feature-flag.entity";
 import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
@@ -27,6 +28,10 @@ const environment = {
   id: "environment-1",
   key: "development",
   name: "Development",
+  project: {
+    id: "project-1",
+    organizationId: "org-1"
+  },
   projectId: "project-1"
 } as Environment;
 
@@ -101,12 +106,19 @@ const createSegment = (overrides: Partial<Segment> = {}): Segment =>
     ...overrides
   }) as Segment;
 
-const createService = () => {
+const createService = (
+  analyticsServiceOverride?: {
+    recordEvaluations: jest.Mock;
+  }
+) => {
   const configs = new Map<string, EnvironmentFlagConfig>();
   const flags = new Map<string, FeatureFlag>();
   const evaluationCacheService = {
     readEnvironmentSnapshot: jest.fn(async () => null),
     writeEnvironmentSnapshot: jest.fn(async () => undefined)
+  };
+  const analyticsService = analyticsServiceOverride ?? {
+    recordEvaluations: jest.fn(async () => undefined)
   };
   const featureFlagsRepository = {
     createQueryBuilder: jest.fn(() => {
@@ -142,14 +154,14 @@ const createService = () => {
     })
   };
   const snapshotLoader = new EvaluationSnapshotLoader(evaluationCacheService as never, featureFlagsRepository as never);
-  const service = new EvaluationsService(snapshotLoader);
+  const service = new EvaluationsService(snapshotLoader, analyticsService as never);
 
-  return { configs, evaluationCacheService, featureFlagsRepository, flags, service };
+  return { analyticsService, configs, evaluationCacheService, featureFlagsRepository, flags, service };
 };
 
 describe("EvaluationsService", () => {
   it("returns the configured value for an enabled boolean flag", async () => {
-    const { configs, evaluationCacheService, flags, service } = createService();
+    const { analyticsService, configs, evaluationCacheService, flags, service } = createService();
     flags.set("flag-1", createFlag());
     configs.set("config-1", createConfig({ value: true }));
 
@@ -164,10 +176,22 @@ describe("EvaluationsService", () => {
         flags: [expect.objectContaining({ key: "new-checkout" })]
       })
     );
+    expect(analyticsService.recordEvaluations).toHaveBeenCalledWith([
+      {
+        environmentId: "environment-1",
+        evaluationType: EvaluationEventType.Single,
+        flagKey: "new-checkout",
+        organizationId: "org-1",
+        projectId: "project-1",
+        reason: "STATIC",
+        sdkKeyId: "sdk-key-1",
+        value: true
+      }
+    ]);
   });
 
   it("uses a valid cache hit for single and all flag evaluation without loading from PostgreSQL", async () => {
-    const { evaluationCacheService, featureFlagsRepository, service } = createService();
+    const { analyticsService, evaluationCacheService, featureFlagsRepository, service } = createService();
     evaluationCacheService.readEnvironmentSnapshot.mockResolvedValue({
       environment: {
         id: "environment-1",
@@ -206,6 +230,23 @@ describe("EvaluationsService", () => {
     });
     expect(featureFlagsRepository.createQueryBuilder).not.toHaveBeenCalled();
     expect(evaluationCacheService.writeEnvironmentSnapshot).not.toHaveBeenCalled();
+    expect(analyticsService.recordEvaluations).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not fail evaluation responses when analytics recording fails", async () => {
+    const analyticsService = {
+      recordEvaluations: jest.fn(async () => {
+        throw new Error("analytics write failed");
+      })
+    };
+    const { configs, flags, service } = createService(analyticsService);
+    flags.set("flag-1", createFlag());
+    configs.set("config-1", createConfig({ value: true }));
+
+    await expect(service.evaluateOne(context, "new-checkout")).resolves.toMatchObject({
+      reason: "STATIC",
+      value: true
+    });
   });
 
   it("falls back to PostgreSQL when cache reads or writes fail", async () => {
@@ -222,7 +263,7 @@ describe("EvaluationsService", () => {
   });
 
   it("returns false for disabled, missing flag, and missing config cases", async () => {
-    const { configs, flags, service } = createService();
+    const { analyticsService, configs, flags, service } = createService();
     flags.set("flag-1", createFlag());
     flags.set("flag-2", createFlag({ id: "flag-2", key: "beta-navigation" }));
     configs.set("config-1", createConfig({ enabled: false, value: true }));
@@ -365,7 +406,7 @@ describe("EvaluationsService", () => {
   });
 
   it("evaluates all project flags for the SDK key environment", async () => {
-    const { configs, flags, service } = createService();
+    const { analyticsService, configs, flags, service } = createService();
     flags.set("flag-1", createFlag({ key: "new-checkout" }));
     flags.set("flag-2", createFlag({ id: "flag-2", key: "beta-navigation" }));
     configs.set("config-1", createConfig({ featureFlagId: "flag-1", value: true }));
@@ -381,6 +422,20 @@ describe("EvaluationsService", () => {
         "new-checkout": { reason: "STATIC", value: true }
       }
     });
+    expect(analyticsService.recordEvaluations).toHaveBeenCalledWith([
+      expect.objectContaining({
+        evaluationType: EvaluationEventType.All,
+        flagKey: "beta-navigation",
+        organizationId: "org-1",
+        value: false
+      }),
+      expect.objectContaining({
+        evaluationType: EvaluationEventType.All,
+        flagKey: "new-checkout",
+        organizationId: "org-1",
+        value: true
+      })
+    ]);
   });
 
   it("applies rollout behavior independently when evaluating all flags", async () => {

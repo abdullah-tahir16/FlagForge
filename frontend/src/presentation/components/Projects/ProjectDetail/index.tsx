@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Flag, Settings, Trash2, UsersRound } from "lucide-react";
+import { BarChart3, Flag, Settings, Trash2, UsersRound } from "lucide-react";
 import type { Environment } from "../../../../core/types/Environment";
 import type { Project } from "../../../../core/types/Project";
 import type { CreatedSdkKey, SdkKey } from "../../../../core/types/SdkKey";
@@ -136,6 +136,13 @@ const ProjectDetail = ({
             >
               <Flag aria-hidden="true" className="h-4 w-4" />
               Manage flags
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center gap-2 rounded-app border border-app-border bg-app-surface px-3 py-2.5 text-sm font-semibold text-app-text transition duration-app hover:border-app-primary/50 hover:bg-app-surface-muted focus:outline-none focus:ring-2 focus:ring-app-focus focus:ring-offset-2"
+              to={`/projects/${project.id}/analytics`}
+            >
+              <BarChart3 aria-hidden="true" className="h-4 w-4" />
+              Analytics
             </Link>
             <Link
               className="inline-flex min-h-11 items-center gap-2 rounded-app border border-app-border bg-app-surface px-3 py-2.5 text-sm font-semibold text-app-text transition duration-app hover:border-app-primary/50 hover:bg-app-surface-muted focus:outline-none focus:ring-2 focus:ring-app-focus focus:ring-offset-2"

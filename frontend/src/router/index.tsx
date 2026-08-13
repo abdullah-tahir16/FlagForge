@@ -4,6 +4,7 @@ import FeatureFlagDetailContainer from "../presentation/containers/FeatureFlagDe
 import FlagsContainer from "../presentation/containers/Flags";
 import HomeContainer from "../presentation/containers/Home";
 import LoginContainer from "../presentation/containers/Login";
+import ProjectAnalyticsContainer from "../presentation/containers/ProjectAnalytics";
 import ProjectDetailContainer from "../presentation/containers/ProjectDetail";
 import ProjectFlagsContainer from "../presentation/containers/ProjectFlags";
 import ProjectSegmentsContainer from "../presentation/containers/ProjectSegments";
@@ -59,6 +60,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRouteContainer>
         <ProjectDetailContainer />
+      </ProtectedRouteContainer>
+    )
+  },
+  {
+    path: "/projects/:projectId/analytics",
+    element: (
+      <ProtectedRouteContainer>
+        <ProjectAnalyticsContainer />
       </ProtectedRouteContainer>
     )
   },

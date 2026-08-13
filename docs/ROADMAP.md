@@ -47,8 +47,8 @@ tasks.md      implementation checklist
 | 10 | `add-segments` | Archived | reusable user segments, segment matching, and segment-source targeting |
 | 11 | `add-redis-cache` | Archived | Redis-backed environment evaluation snapshots, fallback, and invalidation |
 | 12 | `add-realtime-updates` | Archived | authenticated SSE dashboard configuration notifications built on the cache invalidation boundary |
-| 13 | `add-js-sdk` | Active | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
-| 14 | `add-analytics` | Planned | evaluation events, basic dashboard metrics, async processing |
+| 13 | `add-js-sdk` | Archived | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
+| 14 | `add-analytics` | Active | best-effort evaluation events, basic dashboard metrics, privacy-safe analytics |
 | 15 | `add-ci-and-docker-polish` | Planned | CI workflow, Docker polish, production-oriented docs |
 
 ## MVP Milestones
@@ -138,7 +138,7 @@ Exit criteria:
 | v0.5 | SDK and analytics | JavaScript SDK, evaluation events, charts |
 | v1.0 | Portfolio polish | CI/CD, Docker polish, OpenAPI docs, screenshots, ADRs |
 
-Current SDK step: `add-js-sdk` packages a JavaScript client for SDK evaluation with safe defaults. The next likely change is `add-analytics`, recording evaluation events and surfacing basic dashboard metrics.
+Current analytics step: `add-analytics` records privacy-safe SDK evaluation events and surfaces basic project dashboard metrics. The next likely change is `add-ci-and-docker-polish`, tightening CI, Docker, and production-oriented documentation.
 
 ## Change Sizing Rule
 
