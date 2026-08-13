@@ -48,8 +48,8 @@ tasks.md      implementation checklist
 | 11 | `add-redis-cache` | Archived | Redis-backed environment evaluation snapshots, fallback, and invalidation |
 | 12 | `add-realtime-updates` | Archived | authenticated SSE dashboard configuration notifications built on the cache invalidation boundary |
 | 13 | `add-js-sdk` | Archived | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
-| 14 | `add-analytics` | Active | best-effort evaluation events, basic dashboard metrics, privacy-safe analytics |
-| 15 | `add-ci-and-docker-polish` | Planned | CI workflow, Docker polish, production-oriented docs |
+| 14 | `add-analytics` | Archived | best-effort evaluation events, basic dashboard metrics, privacy-safe analytics |
+| 15 | `add-ci-and-docker-polish` | Active | CI workflow, Docker polish, production-oriented docs |
 
 ## MVP Milestones
 
@@ -138,7 +138,7 @@ Exit criteria:
 | v0.5 | SDK and analytics | JavaScript SDK, evaluation events, charts |
 | v1.0 | Portfolio polish | CI/CD, Docker polish, OpenAPI docs, screenshots, ADRs |
 
-Current analytics step: `add-analytics` records privacy-safe SDK evaluation events and surfaces basic project dashboard metrics. The next likely change is `add-ci-and-docker-polish`, tightening CI, Docker, and production-oriented documentation.
+Current operations step: `add-ci-and-docker-polish` tightens CI, Docker, full-stack Compose, environment examples, and smoke checks. Likely follow-up work after this is OpenAPI documentation, screenshots, ADRs, or team/member collaboration features.
 
 ## Change Sizing Rule
 

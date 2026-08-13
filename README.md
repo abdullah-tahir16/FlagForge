@@ -29,12 +29,70 @@ pnpm seed
 pnpm dev
 ```
 
+Full-stack Docker demo:
+
+```bash
+cp .env.docker.example .env
+docker compose up --build -d
+docker compose exec backend node dist/common/database/seeds/seed-demo-user.js
+pnpm smoke
+```
+
+Use `.env.example` for host-based `pnpm dev`. Use `.env.docker.example` for full-stack Docker Compose. Both flows keep the same local URLs.
+
 Local URLs:
 
 ```text
 Frontend: http://localhost:5174
 Backend:  http://localhost:3001/api/v1
 Health:   http://localhost:3001/api/v1/health
+```
+
+Docker image build checks:
+
+```bash
+docker build -f backend/Dockerfile -t flagforge-backend .
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_API_BASE_URL=http://localhost:3001/api/v1 \
+  -t flagforge-frontend .
+```
+
+Full-stack Docker Compose starts PostgreSQL, Redis, the NestJS API, and the static frontend dashboard:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+The backend container runs TypeORM migrations when `TYPEORM_MIGRATIONS_RUN=true`. Demo seed data remains explicit:
+
+```bash
+docker compose exec backend node dist/common/database/seeds/seed-demo-user.js
+```
+
+Smoke check:
+
+```bash
+pnpm smoke
+```
+
+The smoke check verifies backend health, frontend reachability, seeded login, SDK evaluation with the local demo SDK key, and analytics overview access. Override URLs or credentials with:
+
+```text
+FLAGFORGE_API_URL=http://localhost:3001/api/v1
+FLAGFORGE_FRONTEND_URL=http://localhost:5174
+FLAGFORGE_DEMO_EMAIL=user@example.com
+FLAGFORGE_DEMO_PASSWORD=password123
+FLAGFORGE_DEMO_SDK_KEY=ff_development_sk_local_demo_key
+```
+
+CI runs the same root verification commands:
+
+```bash
+openspec validate --all --strict
+corepack pnpm build
+corepack pnpm test
+corepack pnpm lint
 ```
 
 Local demo credentials after running `pnpm seed`:

@@ -10,6 +10,13 @@ Use this file as durable project guidance before planning or applying changes.
 - Frontend stack: Vite, React, React Router, TanStack Query, Tailwind CSS, React Final Form, Zod.
 - Use PostgreSQL when persistence is required. Do not introduce a different database without an OpenSpec change.
 - Keep local demo data seedable through `pnpm seed`. The local demo owner credential is `user@example.com` / `password123`, with a demo project and default environments.
+- Keep root verification commands as the source of truth: `corepack pnpm build`, `corepack pnpm test`, and `corepack pnpm lint`.
+- CI must activate pnpm through Corepack, install with `corepack pnpm install --frozen-lockfile`, run root verification commands, and validate OpenSpec with `openspec validate --all --strict`.
+- Docker operation must preserve app boundaries: backend image from `backend/Dockerfile`, frontend image from `frontend/Dockerfile`, full-stack Compose in `docker-compose.yml`.
+- Preserve the infrastructure-only local workflow: `docker compose up -d postgres redis` plus `pnpm dev`.
+- Full-stack Docker Compose uses service hostnames (`postgres`, `redis`) and should run backend migrations through `TYPEORM_MIGRATIONS_RUN=true`; demo seed data remains explicit.
+- Use `.env.example` for host-based pnpm development and `.env.docker.example` for full-stack Docker Compose.
+- The smoke check command is `pnpm smoke`; it should cover backend health, frontend reachability, seeded login, SDK evaluation, and an authenticated read-model endpoint.
 
 ## Frontend Architecture
 
@@ -195,4 +202,8 @@ Use this structure for frontend domains:
   - `corepack pnpm build`
   - `corepack pnpm test`
   - `corepack pnpm lint`
+- For CI/Docker changes, also run:
+  - `openspec validate --all --strict`
+  - backend and frontend Docker image builds when Docker is available
+  - `docker compose up --build -d`, demo seed, and `pnpm smoke` when Docker is available
 - If checks cannot run, state exactly why.
