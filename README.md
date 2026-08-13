@@ -64,11 +64,45 @@ DELETE /api/v1/projects/:projectId
 
 GET   /api/v1/projects/:projectId/environments
 PATCH /api/v1/projects/:projectId/environments/:environmentId
+
+GET    /api/v1/projects/:projectId/flags
+POST   /api/v1/projects/:projectId/flags
+GET    /api/v1/projects/:projectId/flags/:flagId
+PATCH  /api/v1/projects/:projectId/flags/:flagId
+DELETE /api/v1/projects/:projectId/flags/:flagId
+PATCH  /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId
+
+GET    /api/v1/projects/:projectId/environments/:environmentId/sdk-keys
+POST   /api/v1/projects/:projectId/environments/:environmentId/sdk-keys
+DELETE /api/v1/projects/:projectId/environments/:environmentId/sdk-keys/:sdkKeyId
+
+GET /api/v1/audit
+
+POST /api/v1/sdk/evaluate/:flagKey
+POST /api/v1/sdk/evaluate
 ```
 
 Authentication uses a short-lived access token returned in JSON and a rotating refresh token stored as an httpOnly cookie. The refresh token is stored only as a hash in PostgreSQL and is not exposed to frontend JavaScript.
 
-The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, and Development, Staging, and Production environments for local dashboard testing.
+The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, Development, Staging, and Production environments, plus `New Checkout` and `Beta Navigation` boolean feature flags for local dashboard testing. It also creates representative audit entries and this local Development SDK key:
+
+```text
+ff_development_sk_local_demo_key
+```
+
+Local evaluation example:
+
+```bash
+curl -X POST http://localhost:3001/api/v1/sdk/evaluate/new-checkout \
+  -H "Content-Type: application/json" \
+  -H "X-FlagForge-Key: ff_development_sk_local_demo_key" \
+  -d '{"userId":"user-123"}'
+
+curl -X POST http://localhost:3001/api/v1/sdk/evaluate \
+  -H "Content-Type: application/json" \
+  -H "X-FlagForge-Key: ff_development_sk_local_demo_key" \
+  -d '{"userId":"user-123"}'
+```
 
 ## Project Progress
 
@@ -1334,9 +1368,9 @@ DELETE /segments/:segmentId
 # 37. SDK Key APIs
 
 ```text
-GET    /environments/:environmentId/sdk-keys
-POST   /environments/:environmentId/sdk-keys
-DELETE /sdk-keys/:sdkKeyId
+GET    /projects/:projectId/environments/:environmentId/sdk-keys
+POST   /projects/:projectId/environments/:environmentId/sdk-keys
+DELETE /projects/:projectId/environments/:environmentId/sdk-keys/:sdkKeyId
 ```
 
 ---
@@ -1346,13 +1380,13 @@ DELETE /sdk-keys/:sdkKeyId
 Single flag:
 
 ```text
-POST /sdk/v1/evaluate/:flagKey
+POST /sdk/evaluate/:flagKey
 ```
 
 Header:
 
 ```text
-X-API-Key: ff_prod_sk_xxxxx
+X-FlagForge-Key: ff_prod_sk_xxxxx
 ```
 
 Body:
@@ -1371,8 +1405,7 @@ Response:
 {
   "key": "new-checkout",
   "value": true,
-  "reason": "RULE_MATCH",
-  "version": 17
+  "reason": "STATIC"
 }
 ```
 
@@ -1383,7 +1416,7 @@ Response:
 Endpoint:
 
 ```text
-POST /sdk/v1/evaluate
+POST /sdk/evaluate
 ```
 
 Body:

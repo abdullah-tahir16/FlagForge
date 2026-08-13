@@ -1,4 +1,6 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
+import { AuditAction } from "../src/audit/audit-action.enum";
+import { AuditService } from "../src/audit/audit.service";
 import { AuthenticatedUser } from "../src/auth/authenticated-user";
 import { Environment } from "../src/environments/environment.entity";
 import { Project } from "../src/projects/project.entity";
@@ -29,6 +31,9 @@ const createProject = (overrides: Partial<Project> = {}): Project =>
 const createService = () => {
   const projects = new Map<string, Project>();
   const environments = new Map<string, Environment>();
+  const auditService = {
+    record: jest.fn(async (..._args: unknown[]) => undefined)
+  };
 
   const projectsRepository = {
     create: jest.fn((value: Partial<Project>) => value as Project),
@@ -101,9 +106,10 @@ const createService = () => {
     transaction: jest.fn((callback: (value: typeof manager) => Promise<Project>) => callback(manager))
   };
 
-  const service = new ProjectsService(dataSource as never, projectsRepository as never);
+  const service = new ProjectsService(dataSource as never, auditService as unknown as AuditService, projectsRepository as never);
 
   return {
+    auditService,
     dataSource,
     environments,
     environmentsRepository,
@@ -115,7 +121,7 @@ const createService = () => {
 
 describe("ProjectsService", () => {
   it("creates an organization-scoped project with default environments", async () => {
-    const { environments, service } = createService();
+    const { auditService, environments, service } = createService();
 
     const result = await service.create(owner, { description: "Payment rollout work", name: "Checkout" });
 
@@ -128,17 +134,27 @@ describe("ProjectsService", () => {
     expect(Array.from(environments.values())).toEqual(
       expect.arrayContaining(defaultEnvironments.map((environment) => expect.objectContaining(environment)))
     );
+    expect(auditService.record).toHaveBeenCalledWith(
+      owner,
+      expect.objectContaining({
+        action: AuditAction.ProjectCreated,
+        newValue: expect.objectContaining({ key: "checkout", name: "Checkout" }),
+        oldValue: null,
+        resourceName: "Checkout"
+      }),
+      undefined
+    );
   });
 
   it("rejects duplicate project keys within an organization", async () => {
-    const { projects, service } = createService();
+    const { auditService, projects, service } = createService();
     projects.set("project-1", createProject());
 
     await expect(service.create(owner, { name: "Checkout" })).rejects.toBeInstanceOf(ConflictException);
   });
 
   it("lists and reads only projects scoped to the current organization", async () => {
-    const { projects, service } = createService();
+    const { auditService, projects, service } = createService();
     projects.set("project-1", createProject());
     projects.set("project-2", createProject({ id: "project-2", organizationId: "org-2" }));
 
@@ -148,7 +164,7 @@ describe("ProjectsService", () => {
   });
 
   it("updates project profile fields while preserving the stable key", async () => {
-    const { projects, service } = createService();
+    const { auditService, projects, service } = createService();
     projects.set("project-1", createProject());
 
     const result = await service.update(owner, "project-1", { description: "", name: "Checkout Renamed" });
@@ -156,10 +172,19 @@ describe("ProjectsService", () => {
     expect(result.name).toBe("Checkout Renamed");
     expect(result.description).toBeNull();
     expect(result.key).toBe("checkout");
+    expect(auditService.record).toHaveBeenCalledWith(
+      owner,
+      expect.objectContaining({
+        action: AuditAction.ProjectUpdated,
+        newValue: { description: null, name: "Checkout Renamed" },
+        oldValue: { description: null, name: "Checkout" }
+      }),
+      undefined
+    );
   });
 
   it("deletes a project through the scoped lookup and relies on environment cascade", async () => {
-    const { environments, projects, projectsRepository, service } = createService();
+    const { auditService, environments, projects, projectsRepository, service } = createService();
     projects.set("project-1", createProject());
     environments.set("environment-1", { id: "environment-1", projectId: "project-1" } as Environment);
 
@@ -168,5 +193,13 @@ describe("ProjectsService", () => {
     expect(projectsRepository.remove).toHaveBeenCalledWith(expect.objectContaining({ id: "project-1" }));
     expect(projects.has("project-1")).toBe(false);
     expect(environments.has("environment-1")).toBe(false);
+    expect(auditService.record).toHaveBeenCalledWith(
+      owner,
+      expect.objectContaining({
+        action: AuditAction.ProjectDeleted,
+        oldValue: expect.objectContaining({ key: "checkout", name: "Checkout" })
+      }),
+      undefined
+    );
   });
 });

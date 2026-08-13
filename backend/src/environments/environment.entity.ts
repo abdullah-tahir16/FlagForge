@@ -5,10 +5,13 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn
 } from "typeorm";
+import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
 import { Project } from "../projects/project.entity";
+import { SdkKey } from "../sdk-keys/sdk-key.entity";
 
 @Entity({ name: "environments" })
 @Index("UQ_environments_project_key", ["projectId", "key"], { unique: true })
@@ -23,6 +26,12 @@ export class Environment {
   @ManyToOne(() => Project, (project) => project.environments, { onDelete: "CASCADE" })
   @JoinColumn({ name: "project_id" })
   project!: Project;
+
+  @OneToMany(() => EnvironmentFlagConfig, (config) => config.environment)
+  flagConfigs!: EnvironmentFlagConfig[];
+
+  @OneToMany(() => SdkKey, (sdkKey) => sdkKey.environment)
+  sdkKeys!: SdkKey[];
 
   @Column({ type: "varchar", length: 120 })
   name!: string;

@@ -1,6 +1,10 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
+import type { AuditContext, AuditSnapshot } from "../audit/audit-context";
+import { AuditAction } from "../audit/audit-action.enum";
+import { AuditResourceType } from "../audit/audit-resource-type.enum";
+import { AuditService } from "../audit/audit.service";
 import { AuthenticatedUser } from "../auth/authenticated-user";
 import { createKeyFromName } from "../common/fns/create-key-from-name";
 import { Environment } from "../environments/environment.entity";
@@ -19,11 +23,12 @@ export const defaultEnvironments = [
 export class ProjectsService {
   constructor(
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
     @InjectRepository(Project)
     private readonly projectsRepository: Repository<Project>
   ) {}
 
-  async create(user: AuthenticatedUser, dto: CreateProjectDto): Promise<ProjectResponse> {
+  async create(user: AuthenticatedUser, dto: CreateProjectDto, auditContext?: AuditContext): Promise<ProjectResponse> {
     const name = dto.name.trim();
     const key = createKeyFromName(name);
 
@@ -61,6 +66,20 @@ export class ProjectsService {
       return savedProject;
     });
 
+    await this.auditService.record(
+      user,
+      {
+        action: AuditAction.ProjectCreated,
+        newValue: this.projectSnapshot(project),
+        oldValue: null,
+        projectId: project.id,
+        resourceId: project.id,
+        resourceName: project.name,
+        resourceType: AuditResourceType.Project
+      },
+      auditContext
+    );
+
     return this.toResponse(project);
   }
 
@@ -79,8 +98,14 @@ export class ProjectsService {
     return this.toResponse(project);
   }
 
-  async update(user: AuthenticatedUser, projectId: string, dto: UpdateProjectDto): Promise<ProjectResponse> {
+  async update(
+    user: AuthenticatedUser,
+    projectId: string,
+    dto: UpdateProjectDto,
+    auditContext?: AuditContext
+  ): Promise<ProjectResponse> {
     const project = await this.findProjectForUser(user, projectId);
+    const oldValue = this.changedProjectSnapshot(project, dto);
 
     if (dto.name !== undefined) {
       project.name = dto.name.trim();
@@ -91,13 +116,39 @@ export class ProjectsService {
     }
 
     const savedProject = await this.projectsRepository.save(project);
+    await this.auditService.record(
+      user,
+      {
+        action: AuditAction.ProjectUpdated,
+        newValue: this.changedProjectSnapshot(savedProject, dto),
+        oldValue,
+        projectId: savedProject.id,
+        resourceId: savedProject.id,
+        resourceName: savedProject.name,
+        resourceType: AuditResourceType.Project
+      },
+      auditContext
+    );
 
     return this.toResponse(savedProject);
   }
 
-  async remove(user: AuthenticatedUser, projectId: string): Promise<void> {
+  async remove(user: AuthenticatedUser, projectId: string, auditContext?: AuditContext): Promise<void> {
     const project = await this.findProjectForUser(user, projectId);
     await this.projectsRepository.remove(project);
+    await this.auditService.record(
+      user,
+      {
+        action: AuditAction.ProjectDeleted,
+        newValue: null,
+        oldValue: this.projectSnapshot(project),
+        projectId: project.id,
+        resourceId: project.id,
+        resourceName: project.name,
+        resourceType: AuditResourceType.Project
+      },
+      auditContext
+    );
   }
 
   async findProjectForUser(user: AuthenticatedUser, projectId: string): Promise<Project> {
@@ -132,5 +183,28 @@ export class ProjectsService {
     const trimmedDescription = description.trim();
 
     return trimmedDescription ? trimmedDescription : null;
+  }
+
+  private changedProjectSnapshot(project: Project, dto: UpdateProjectDto): AuditSnapshot {
+    const snapshot: AuditSnapshot = {};
+
+    if (dto.name !== undefined) {
+      snapshot.name = project.name;
+    }
+
+    if (dto.description !== undefined) {
+      snapshot.description = project.description;
+    }
+
+    return snapshot;
+  }
+
+  private projectSnapshot(project: Project): AuditSnapshot {
+    return {
+      description: project.description,
+      key: project.key,
+      name: project.name,
+      organizationId: project.organizationId
+    };
   }
 }

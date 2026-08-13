@@ -1,4 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
+import { AuditAction } from "../src/audit/audit-action.enum";
+import { AuditService } from "../src/audit/audit.service";
 import { AuthenticatedUser } from "../src/auth/authenticated-user";
 import { Environment } from "../src/environments/environment.entity";
 import { EnvironmentsService } from "../src/environments/environments.service";
@@ -31,6 +33,9 @@ const createService = () => {
   const projectsService = {
     findProjectForUser: jest.fn(async () => ({ id: "project-1", organizationId: "org-1" }))
   };
+  const auditService = {
+    record: jest.fn(async (..._args: unknown[]) => undefined)
+  };
   const environmentsRepository = {
     find: jest.fn(async ({ where }: { where: Partial<Environment> }) =>
       Array.from(environments.values())
@@ -49,10 +54,12 @@ const createService = () => {
   };
   const service = new EnvironmentsService(
     projectsService as unknown as ProjectsService,
+    auditService as unknown as AuditService,
     environmentsRepository as never
   );
 
   return {
+    auditService,
     environments,
     environmentsRepository,
     projectsService,
@@ -74,13 +81,24 @@ describe("EnvironmentsService", () => {
   });
 
   it("updates environment name while preserving the stable key", async () => {
-    const { environments, service } = createService();
+    const { auditService, environments, service } = createService();
     environments.set("environment-1", createEnvironment());
 
     const result = await service.update(owner, "project-1", "environment-1", { name: "Local" });
 
     expect(result.name).toBe("Local");
     expect(result.key).toBe("development");
+    expect(auditService.record).toHaveBeenCalledWith(
+      owner,
+      expect.objectContaining({
+        action: AuditAction.EnvironmentUpdated,
+        environmentId: "environment-1",
+        newValue: { name: "Local" },
+        oldValue: { name: "Development" },
+        projectId: "project-1"
+      }),
+      undefined
+    );
   });
 
   it("rejects missing environments and cross-organization project access", async () => {

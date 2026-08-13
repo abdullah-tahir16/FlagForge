@@ -10,6 +10,7 @@ import {
   UpdateDateColumn
 } from "typeorm";
 import { Environment } from "../environments/environment.entity";
+import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { Organization } from "../organizations/organization.entity";
 
 @Entity({ name: "projects" })
@@ -36,6 +37,9 @@ export class Project {
 
   @OneToMany(() => Environment, (environment) => environment.project)
   environments!: Environment[];
+
+  @OneToMany(() => FeatureFlag, (featureFlag) => featureFlag.project)
+  featureFlags!: FeatureFlag[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;

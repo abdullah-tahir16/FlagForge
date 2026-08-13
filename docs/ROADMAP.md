@@ -37,11 +37,11 @@ tasks.md      implementation checklist
 | 0 | `bootstrap-platform-foundation` | Archived | pnpm workspace, `frontend/`, `backend/`, NestJS, Vite, Postgres, Jest |
 | 1 | `add-auth-and-organization` | Archived | registration, login, current user, organization ownership |
 | 2 | `add-projects-and-environments` | Archived | project CRUD, default environments, environment management |
-| 3 | `enhance-dashboard-ui-foundation` | Active | strict dashboard UI/UX rules, shared primitives, shell, auth, projects polish |
-| 4 | `add-boolean-feature-flags` | Planned | boolean flags, per-environment config, enable/disable |
-| 5 | `add-sdk-keys-and-evaluation-api` | Planned | SDK key creation, hashed keys, single/all flag evaluation APIs |
+| 3 | `enhance-dashboard-ui-foundation` | Archived | strict dashboard UI/UX rules, shared primitives, shell, auth, projects polish |
+| 4 | `add-boolean-feature-flags` | Archived | boolean flags, per-environment config, enable/disable |
+| 5 | `add-sdk-keys-and-evaluation-api` | Archived | SDK key creation, hashed keys, single/all flag evaluation APIs |
 | 6 | `add-dashboard-flag-management` | Planned | dashboard project/flag views, environment switching, flag toggling |
-| 7 | `add-audit-logs` | Planned | audit events for important management operations |
+| 7 | `add-audit-logs` | Active | audit events for important management operations |
 | 8 | `add-percentage-rollouts` | Planned | deterministic rollout buckets and rollout configuration |
 | 9 | `add-targeting-rules` | Planned | ordered rules, attribute operators, first-match evaluation |
 | 10 | `add-segments` | Planned | reusable user segments and segment matching |

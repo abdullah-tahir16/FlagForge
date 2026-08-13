@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AuditModule } from "../audit/audit.module";
 import { Project } from "../projects/project.entity";
 import { ProjectsModule } from "../projects/projects.module";
 import { Environment } from "./environment.entity";
@@ -8,7 +9,7 @@ import { EnvironmentsService } from "./environments.service";
 
 @Module({
   controllers: [EnvironmentsController],
-  imports: [ProjectsModule, TypeOrmModule.forFeature([Project, Environment])],
+  imports: [AuditModule, ProjectsModule, TypeOrmModule.forFeature([Project, Environment])],
   providers: [EnvironmentsService]
 })
 export class EnvironmentsModule {}

@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
+import { getAuditContextFromRequest } from "../audit/audit-context";
 import { AuthenticatedUser } from "../auth/authenticated-user";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -13,8 +15,12 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateProjectDto): Promise<ProjectResponse> {
-    return this.projectsService.create(user, dto);
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateProjectDto,
+    @Req() request: Request
+  ): Promise<ProjectResponse> {
+    return this.projectsService.create(user, dto, getAuditContextFromRequest(request));
   }
 
   @Get()
@@ -31,14 +37,19 @@ export class ProjectsController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param("projectId") projectId: string,
-    @Body() dto: UpdateProjectDto
+    @Body() dto: UpdateProjectDto,
+    @Req() request: Request
   ): Promise<ProjectResponse> {
-    return this.projectsService.update(user, projectId, dto);
+    return this.projectsService.update(user, projectId, dto, getAuditContextFromRequest(request));
   }
 
   @Delete(":projectId")
   @HttpCode(204)
-  remove(@CurrentUser() user: AuthenticatedUser, @Param("projectId") projectId: string): Promise<void> {
-    return this.projectsService.remove(user, projectId);
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("projectId") projectId: string,
+    @Req() request: Request
+  ): Promise<void> {
+    return this.projectsService.remove(user, projectId, getAuditContextFromRequest(request));
   }
 }

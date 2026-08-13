@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import type { LucideIcon } from "lucide-react";
 import { FolderKanban, Layers, LayoutDashboard, LogOut, ScrollText, ToggleLeft } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import Button from "../Common/Button";
 import StatusBadge from "../Common/StatusBadge";
 
@@ -14,6 +14,7 @@ interface Props extends PropsWithChildren {
 }
 
 interface NavItem {
+  activeWhen?: (pathname: string) => boolean;
   disabled?: boolean;
   icon: LucideIcon;
   label: string;
@@ -22,13 +23,14 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Overview", to: "/" },
-  { icon: FolderKanban, label: "Projects", to: "/projects" },
-  { disabled: true, icon: ToggleLeft, label: "Flags", to: "/flags" },
+  { activeWhen: (pathname) => pathname === "/projects" || /^\/projects\/[^/]+$/.test(pathname), icon: FolderKanban, label: "Projects", to: "/projects" },
+  { activeWhen: (pathname) => pathname === "/flags" || pathname.includes("/flags"), icon: ToggleLeft, label: "Flags", to: "/flags" },
   { disabled: true, icon: Layers, label: "Environments", to: "/environments" },
-  { disabled: true, icon: ScrollText, label: "Audit", to: "/audit" }
+  { activeWhen: (pathname) => pathname === "/audit", icon: ScrollText, label: "Audit", to: "/audit" }
 ];
 
 const AppShell = ({ apiStatus, isCheckingApi, children, onLogout, organizationName, userName }: Props) => {
+  const location = useLocation();
   const statusLabel = isCheckingApi ? "checking" : apiStatus;
 
   return (
@@ -58,13 +60,15 @@ const AppShell = ({ apiStatus, isCheckingApi, children, onLogout, organizationNa
 
               return (
                 <NavLink
-                  className={({ isActive }) =>
-                    `inline-flex min-h-11 items-center gap-3 rounded-app border-l-4 px-3 py-2.5 transition duration-app ${
-                      isActive
+                  className={({ isActive }) => {
+                    const itemIsActive = item.activeWhen ? item.activeWhen(location.pathname) : isActive;
+
+                    return `inline-flex min-h-11 items-center gap-3 rounded-app border-l-4 px-3 py-2.5 transition duration-app ${
+                      itemIsActive
                         ? "border-app-accent bg-app-sidebar-active font-bold text-app-sidebar-active-text"
                         : "border-transparent text-app-on-brand hover:bg-app-brand-muted"
-                    }`
-                  }
+                    }`;
+                  }}
                   end={item.to === "/"}
                   key={item.label}
                   to={item.to}
@@ -123,13 +127,15 @@ const AppShell = ({ apiStatus, isCheckingApi, children, onLogout, organizationNa
 
                 return (
                   <NavLink
-                    className={({ isActive }) =>
-                      `inline-flex min-h-11 items-center justify-center gap-2 rounded-app border px-2.5 py-2 transition duration-app ${
-                        isActive
+                    className={({ isActive }) => {
+                      const itemIsActive = item.activeWhen ? item.activeWhen(location.pathname) : isActive;
+
+                      return `inline-flex min-h-11 items-center justify-center gap-2 rounded-app border px-2.5 py-2 transition duration-app ${
+                        itemIsActive
                           ? "border-app-primary bg-app-primary-muted font-bold text-app-primary"
                           : "border-app-border bg-app-surface text-app-text hover:bg-app-surface-muted"
-                      }`
-                    }
+                      }`;
+                    }}
                     end={item.to === "/"}
                     key={item.label}
                     to={item.to}

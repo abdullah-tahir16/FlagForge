@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
+import { getAuditContextFromRequest } from "../audit/audit-context";
 import { AuthenticatedUser } from "../auth/authenticated-user";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -24,8 +26,9 @@ export class EnvironmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param("projectId") projectId: string,
     @Param("environmentId") environmentId: string,
-    @Body() dto: UpdateEnvironmentDto
+    @Body() dto: UpdateEnvironmentDto,
+    @Req() request: Request
   ): Promise<EnvironmentResponse> {
-    return this.environmentsService.update(user, projectId, environmentId, dto);
+    return this.environmentsService.update(user, projectId, environmentId, dto, getAuditContextFromRequest(request));
   }
 }
