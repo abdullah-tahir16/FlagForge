@@ -10,6 +10,7 @@
     "dev:frontend": "corepack pnpm --filter @flagforge/frontend dev",
     "build": "corepack pnpm -r build",
     "lint": "corepack pnpm -r lint",
+    "seed": "corepack pnpm --filter @flagforge/backend seed",
     "test": "corepack pnpm -r test"
   },
   "engines": {

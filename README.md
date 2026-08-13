@@ -25,6 +25,7 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 pnpm install
 docker compose up -d postgres
+pnpm seed
 pnpm dev
 ```
 
@@ -34,6 +35,49 @@ Local URLs:
 Frontend: http://localhost:5174
 Backend:  http://localhost:3001/api/v1
 Health:   http://localhost:3001/api/v1/health
+```
+
+Local demo credentials after running `pnpm seed`:
+
+```text
+Email:    user@example.com
+Password: password123
+```
+
+Current management API endpoints:
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+GET  /api/v1/auth/me
+
+GET   /api/v1/organizations/current
+PATCH /api/v1/organizations/current
+
+GET    /api/v1/projects
+POST   /api/v1/projects
+GET    /api/v1/projects/:projectId
+PATCH  /api/v1/projects/:projectId
+DELETE /api/v1/projects/:projectId
+
+GET   /api/v1/projects/:projectId/environments
+PATCH /api/v1/projects/:projectId/environments/:environmentId
+```
+
+Authentication uses a short-lived access token returned in JSON and a rotating refresh token stored as an httpOnly cookie. The refresh token is stored only as a hash in PostgreSQL and is not exposed to frontend JavaScript.
+
+The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, and Development, Staging, and Production environments for local dashboard testing.
+
+## Project Progress
+
+FlagForge is managed through OpenSpec changes. The high-level roadmap is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+Current workflow:
+
+```text
+plan change -> implement tasks -> verify -> archive -> start next change
 ```
 
 ## 1. Project Overview
