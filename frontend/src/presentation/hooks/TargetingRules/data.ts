@@ -1,30 +1,10 @@
 import { z } from "zod";
 import { targetingRuleOperators, targetingRuleSources } from "../../../core/types/TargetingRules";
-import type { TargetingRuleOperator } from "../../../core/types/TargetingRules";
+import { arrayComparisonOperators, comparisonOperatorLabels, numericComparisonOperators } from "../../../core/utils/targeting";
 
-export const numericTargetingRuleOperators: TargetingRuleOperator[] = [
-  "GREATER_THAN",
-  "GREATER_THAN_OR_EQUAL",
-  "LESS_THAN",
-  "LESS_THAN_OR_EQUAL"
-];
-
-export const arrayTargetingRuleOperators: TargetingRuleOperator[] = ["IN", "NOT_IN"];
-
-export const targetingRuleOperatorLabels: Record<TargetingRuleOperator, string> = {
-  CONTAINS: "contains",
-  ENDS_WITH: "ends with",
-  EQUALS: "equals",
-  GREATER_THAN: "greater than",
-  GREATER_THAN_OR_EQUAL: "greater than or equal",
-  IN: "in",
-  LESS_THAN: "less than",
-  LESS_THAN_OR_EQUAL: "less than or equal",
-  NOT_CONTAINS: "does not contain",
-  NOT_EQUALS: "does not equal",
-  NOT_IN: "not in",
-  STARTS_WITH: "starts with"
-};
+export const numericTargetingRuleOperators = numericComparisonOperators;
+export const arrayTargetingRuleOperators = arrayComparisonOperators;
+export const targetingRuleOperatorLabels = comparisonOperatorLabels;
 
 export const targetingRuleOperatorOptions = targetingRuleOperators.map((operator) => ({
   label: targetingRuleOperatorLabels[operator],

@@ -284,7 +284,7 @@ const SegmentDetail = ({
                     <Badge>{condition.attribute}</Badge>
                     <span className="text-sm font-semibold text-app-text">{segmentOperatorLabels[condition.operator]}</span>
                     <Badge tone="primary">{formatSegmentComparisonValue(condition.comparisonValue)}</Badge>
-                    {isDeletingCondition && deletingConditionId === condition.id ? <Badge tone="danger">deleting</Badge> : null}
+                    {isDeletingCondition && deletingConditionId === condition.id ? <Badge tone="danger">Deleting</Badge> : null}
                   </div>
                 </div>
               </DataRow>

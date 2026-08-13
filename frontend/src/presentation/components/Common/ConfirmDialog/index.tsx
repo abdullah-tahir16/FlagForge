@@ -3,6 +3,7 @@ import Button from "../Button";
 
 interface Props {
   cancelLabel?: string;
+  confirmingLabel?: string;
   confirmLabel: string;
   description: string;
   isConfirming?: boolean;
@@ -14,6 +15,7 @@ interface Props {
 
 const ConfirmDialog = ({
   cancelLabel = "Cancel",
+  confirmingLabel = "Deleting",
   confirmLabel,
   description,
   isConfirming = false,
@@ -53,7 +55,7 @@ const ConfirmDialog = ({
             {cancelLabel}
           </Button>
           <Button disabled={isConfirming} onClick={onConfirm} type="button" variant="danger">
-            {isConfirming ? "Deleting" : confirmLabel}
+            {isConfirming ? confirmingLabel : confirmLabel}
           </Button>
         </div>
       </section>

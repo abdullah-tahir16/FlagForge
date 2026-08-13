@@ -2,7 +2,7 @@ import { z } from "zod";
 import { segmentMatchModes } from "../../../core/types/Segment";
 import type { SegmentMatchMode } from "../../../core/types/Segment";
 import { targetingRuleOperators } from "../../../core/types/TargetingRules";
-import type { TargetingRuleOperator } from "../../../core/types/TargetingRules";
+import { arrayComparisonOperators, comparisonOperatorLabels, numericComparisonOperators } from "../../../core/utils/targeting";
 
 export const segmentMatchModeLabels: Record<SegmentMatchMode, string> = {
   MATCH_ALL: "Match all",
@@ -20,29 +20,9 @@ export const segmentFormSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(160, "Name must be 160 characters or less")
 });
 
-export const numericSegmentOperators: TargetingRuleOperator[] = [
-  "GREATER_THAN",
-  "GREATER_THAN_OR_EQUAL",
-  "LESS_THAN",
-  "LESS_THAN_OR_EQUAL"
-];
-
-export const arraySegmentOperators: TargetingRuleOperator[] = ["IN", "NOT_IN"];
-
-export const segmentOperatorLabels: Record<TargetingRuleOperator, string> = {
-  CONTAINS: "contains",
-  ENDS_WITH: "ends with",
-  EQUALS: "equals",
-  GREATER_THAN: "greater than",
-  GREATER_THAN_OR_EQUAL: "greater than or equal",
-  IN: "in",
-  LESS_THAN: "less than",
-  LESS_THAN_OR_EQUAL: "less than or equal",
-  NOT_CONTAINS: "does not contain",
-  NOT_EQUALS: "does not equal",
-  NOT_IN: "not in",
-  STARTS_WITH: "starts with"
-};
+export const numericSegmentOperators = numericComparisonOperators;
+export const arraySegmentOperators = arrayComparisonOperators;
+export const segmentOperatorLabels = comparisonOperatorLabels;
 
 export const segmentOperatorOptions = targetingRuleOperators.map((operator) => ({
   label: segmentOperatorLabels[operator],

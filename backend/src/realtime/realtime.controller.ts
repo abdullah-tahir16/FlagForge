@@ -1,6 +1,7 @@
 import { Controller, Get, Req, Res, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { AuthenticatedUser } from "../auth/authenticated-user";
 import { RealtimePublisherService } from "./realtime-publisher.service";
@@ -12,6 +13,8 @@ interface JwtPayload {
   sub: string;
 }
 
+@ApiTags("realtime")
+@ApiBearerAuth("access-token")
 @Controller("realtime")
 export class RealtimeController {
   private readonly heartbeatIntervalMs = 25000;
@@ -22,6 +25,14 @@ export class RealtimeController {
     private readonly realtimePublisher: RealtimePublisherService
   ) {}
 
+  @ApiOperation({
+    summary: "Open a Server-Sent Events (SSE) stream of configuration-change notifications for the caller's organization"
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "A text/event-stream of configuration-changed events (plus periodic heartbeat comments) for the authenticated user's organization. Swagger UI cannot render this stream interactively; connect with an SSE-capable client and a valid bearer token."
+  })
   @Get("events")
   async streamEvents(@Req() request: Request, @Res() response: Response): Promise<void> {
     const user = await this.authenticateRequest(request);

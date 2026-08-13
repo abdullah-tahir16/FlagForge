@@ -19,6 +19,7 @@ interface Props {
   isSubmitting: boolean;
   onSubmit: (values: Record<string, string>) => Promise<void>;
   submitLabel: string;
+  submittingLabel: string;
   title: string;
   validate: (values: Record<string, string>) => Partial<Record<string, string>>;
 }
@@ -32,6 +33,7 @@ const AuthForm = ({
   isSubmitting,
   onSubmit,
   submitLabel,
+  submittingLabel,
   title,
   validate
 }: Props) => (
@@ -51,16 +53,11 @@ const AuthForm = ({
           </p>
         </div>
 
-        <div className="grid gap-4 border-t border-app-on-brand/15 pt-8">
-          {authHighlights.map((highlight, index) => (
-            <div className="flex items-center justify-between border-b border-app-on-brand/10 pb-4" key={highlight}>
-              <span className="text-sm font-medium text-app-on-brand/80">{highlight}</span>
-              <span
-                className={
-                  index === 2 ? "h-2 w-20 rounded-full bg-app-accent" : "h-2 w-20 rounded-full bg-app-on-brand/20"
-                }
-              />
-            </div>
+        <div className="grid gap-2 border-t border-app-on-brand/15 pt-8">
+          {authHighlights.map((highlight) => (
+            <p className="text-sm font-medium text-app-on-brand/80" key={highlight}>
+              {highlight}
+            </p>
           ))}
         </div>
       </div>
@@ -79,7 +76,7 @@ const AuthForm = ({
         <Panel className="p-6 shadow-app sm:p-8">
           <div className="mb-6">
             <div className="mb-3 flex flex-wrap gap-2">
-              <Badge tone="primary">Local workspace</Badge>
+              <Badge tone="primary">Local organization</Badge>
               <Badge tone="info">httpOnly refresh</Badge>
             </div>
             <h2 className="mt-1 text-2xl font-semibold tracking-normal text-app-text">{title}</h2>
@@ -111,7 +108,7 @@ const AuthForm = ({
                     ) : (
                       <KeyRound aria-hidden="true" className="h-4 w-4" />
                     )}
-                    {isSubmitting || submitting ? "Please wait" : submitLabel}
+                    {isSubmitting || submitting ? submittingLabel : submitLabel}
                   </span>
                 </Button>
               </Form>
@@ -119,11 +116,13 @@ const AuthForm = ({
             validate={validate}
           />
 
-          <div className="mt-5">
-            <Alert tone="info" title="Local demo">
-              {demoCredentials.email} / {demoCredentials.password}
-            </Alert>
-          </div>
+          {import.meta.env.VITE_SHOW_DEMO_CREDENTIALS === "true" ? (
+            <div className="mt-5">
+              <Alert tone="info" title="Local demo">
+                {demoCredentials.email} / {demoCredentials.password}
+              </Alert>
+            </div>
+          ) : null}
 
           <Link
             className="mt-5 block text-sm font-semibold text-app-primary hover:text-app-primary-hover focus:outline-none focus:ring-2 focus:ring-app-focus focus:ring-offset-2"

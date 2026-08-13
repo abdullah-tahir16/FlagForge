@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 import { useFeatureFlagUseCase } from "../../../infrastructure/useCases/FeatureFlag/useFeatureFlagUseCase";
 import { useProjectUseCase } from "../../../infrastructure/useCases/Project/useProjectUseCase";
@@ -8,7 +7,6 @@ import { validateWithSchema } from "../Auth/fns";
 import { environmentFlagConfigSchema, featureFlagFormSchema } from "../ProjectFlags/data";
 
 export const useFeatureFlagDetailFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -68,7 +66,6 @@ export const useFeatureFlagDetailFeature = () => {
       ? "Environment configuration could not be saved."
       : null,
     updateFeatureFlagErrorMessage: featureFlags.updateFeatureFlagError ? "Feature flag could not be saved." : null,
-    updatingEnvironmentFlagConfigId: featureFlags.updatingEnvironmentFlagConfigId,
-    ...app
+    updatingEnvironmentFlagConfigId: featureFlags.updatingEnvironmentFlagConfigId
   };
 };

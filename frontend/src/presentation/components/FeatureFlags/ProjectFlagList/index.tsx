@@ -157,7 +157,6 @@ const ProjectFlagList = ({
                   </Link>
                   <div className="mt-1 flex flex-wrap gap-2">
                     <Badge>{featureFlag.key}</Badge>
-                    <Badge tone="primary">{featureFlag.type.toLowerCase()}</Badge>
                     <span className="text-sm text-app-text-muted">
                       {featureFlag.description ?? "No description"}
                     </span>
@@ -169,7 +168,7 @@ const ProjectFlagList = ({
         ) : null}
       </section>
       <ConfirmDialog
-        confirmLabel="Delete flag"
+        confirmLabel="Delete feature flag"
         description={`Delete ${pendingDeleteFeatureFlagName ?? "this feature flag"} and its environment configuration. This action cannot be undone.`}
         isConfirming={isDeletingFeatureFlag}
         onCancel={onCancelDeleteFeatureFlag}

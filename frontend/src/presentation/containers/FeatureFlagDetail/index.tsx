@@ -13,8 +13,6 @@ const FeatureFlagDetailContainer = (_props: Props) => {
 
   return (
     <AppShell
-      apiStatus={feature.apiStatus}
-      isCheckingApi={feature.isCheckingApi}
       onLogout={feature.onLogout}
       organizationName={feature.currentOrganization?.name ?? "Dashboard"}
       userName={feature.currentUser ? `${feature.currentUser.firstName} ${feature.currentUser.lastName}` : "User"}
@@ -32,10 +30,7 @@ const FeatureFlagDetailContainer = (_props: Props) => {
         }
         metadata={
           feature.featureFlag ? (
-            <>
-              <Badge tone="primary">{feature.featureFlag.key}</Badge>
-              <Badge>{feature.featureFlag.type.toLowerCase()}</Badge>
-            </>
+            <Badge tone="primary">{feature.featureFlag.key}</Badge>
           ) : null
         }
         title={feature.title}

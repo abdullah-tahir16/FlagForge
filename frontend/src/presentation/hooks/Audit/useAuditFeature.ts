@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AuditLogFilters } from "../../../core/types/Audit";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuditUseCase } from "../../../infrastructure/useCases/Audit/useAuditUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 import { validateWithSchema } from "../Auth/fns";
@@ -13,7 +12,6 @@ import { getAuditFilterValues, toAuditFilters } from "./fns";
 const auditPageLimit = 25;
 
 export const useAuditFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -71,9 +69,7 @@ export const useAuditFeature = () => {
     onNextPage,
     onPreviousPage,
     pageNumber: pagination.pageNumber,
-    pagination: audit.pagination,
     title: "Audit",
-    validateFilters: validateWithSchema(auditFilterSchema),
-    ...app
+    validateFilters: validateWithSchema(auditFilterSchema)
   };
 };

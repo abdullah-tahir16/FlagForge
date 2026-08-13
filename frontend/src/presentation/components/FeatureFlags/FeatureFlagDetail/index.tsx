@@ -72,7 +72,6 @@ const FeatureFlagDetail = ({
         <div className="mb-5">
           <div className="mb-2 flex flex-wrap gap-2">
             <Badge tone="primary">{featureFlag.key}</Badge>
-            <Badge>{featureFlag.type.toLowerCase()}</Badge>
           </div>
           <h2 className="text-lg font-semibold text-app-text">Flag metadata</h2>
           <p className="mt-1 text-sm text-app-text-muted">The flag key stays stable after renaming.</p>

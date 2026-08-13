@@ -40,8 +40,18 @@ interface MockAuditQueryBuilder {
   where: jest.MockedFunction<(query: string, params: Record<string, unknown>) => MockAuditQueryBuilder>;
 }
 
+const createFindByIdsRepository = <T extends { id: string }>(records: Map<string, T>) => ({
+  find: jest.fn(async ({ where }: { where: { id: { value: string[] } } }) => {
+    const ids = where.id.value;
+
+    return ids.map((id) => records.get(id)).filter((record): record is T => Boolean(record));
+  })
+});
+
 const createService = () => {
   const auditLogs = new Map<string, AuditLog>();
+  const projects = new Map<string, { id: string; name: string }>();
+  const environments = new Map<string, { id: string; name: string }>();
   const auditLogsRepository = {
     create: jest.fn((value: Partial<AuditLog>) => value as AuditLog),
     createQueryBuilder: jest.fn(() => {
@@ -108,9 +118,11 @@ const createService = () => {
       return savedAuditLog;
     })
   };
-  const service = new AuditService(auditLogsRepository as never);
+  const projectsRepository = createFindByIdsRepository(projects);
+  const environmentsRepository = createFindByIdsRepository(environments);
+  const service = new AuditService(auditLogsRepository as never, projectsRepository as never, environmentsRepository as never);
 
-  return { auditLogs, auditLogsRepository, service };
+  return { auditLogs, auditLogsRepository, environments, projects, service };
 };
 
 describe("AuditService", () => {
@@ -209,5 +221,35 @@ describe("AuditService", () => {
       limit: 1,
       nextCursor: null
     });
+  });
+
+  it("resolves current project and environment names, and returns null when the resource is deleted", async () => {
+    const { auditLogs, environments, projects, service } = createService();
+    projects.set("project-1", { id: "project-1", name: "Checkout" });
+    environments.set("environment-1", { id: "environment-1", name: "Production" });
+    auditLogs.set(
+      "audit-5",
+      createAuditLog({
+        environmentId: "environment-1",
+        id: "audit-5",
+        projectId: "project-1"
+      })
+    );
+    auditLogs.set(
+      "audit-6",
+      createAuditLog({
+        createdAt: new Date("2026-08-13T00:00:04.000Z"),
+        environmentId: "environment-deleted",
+        id: "audit-6",
+        projectId: "project-deleted"
+      })
+    );
+
+    const result = await service.findAll(user, {});
+
+    expect(result.entries).toEqual([
+      expect.objectContaining({ environmentName: null, id: "audit-6", projectId: "project-deleted", projectName: null }),
+      expect.objectContaining({ environmentName: "Production", id: "audit-5", projectId: "project-1", projectName: "Checkout" })
+    ]);
   });
 });

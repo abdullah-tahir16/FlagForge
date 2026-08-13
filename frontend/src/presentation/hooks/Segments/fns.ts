@@ -1,11 +1,5 @@
-import type {
-  CreateSegmentConditionInput,
-  CreateSegmentInput,
-  Segment,
-  SegmentCondition
-} from "../../../core/types/Segment";
-import type { TargetingComparisonValue, TargetingPrimitive } from "../../../core/types/TargetingRules";
-import { arraySegmentOperators, numericSegmentOperators } from "./data";
+import type { CreateSegmentConditionInput, CreateSegmentInput, Segment, SegmentCondition } from "../../../core/types/Segment";
+import { formatComparisonValue, moveInOrderedList, parseComparisonValueForOperator } from "../../../core/utils/targeting";
 import type { SegmentConditionFormValues, SegmentFormValues } from "./data";
 
 export const defaultSegmentFormValues: SegmentFormValues = {
@@ -20,13 +14,7 @@ export const defaultSegmentConditionFormValues: SegmentConditionFormValues = {
   operator: "EQUALS"
 };
 
-export const formatSegmentComparisonValue = (value: TargetingComparisonValue): string => {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  }
-
-  return value === null ? "null" : String(value);
-};
+export const formatSegmentComparisonValue = formatComparisonValue;
 
 export const getSegmentInitialValues = (segment?: Segment): SegmentFormValues =>
   segment
@@ -54,7 +42,7 @@ export const parseSegmentFormValues = (values: SegmentFormValues): CreateSegment
 
 export const parseSegmentConditionFormValues = (values: SegmentConditionFormValues): CreateSegmentConditionInput => ({
   attribute: values.attribute.trim(),
-  comparisonValue: parseComparisonValue(values),
+  comparisonValue: parseComparisonValueForOperator(values.operator, values.comparisonValue),
   operator: values.operator
 });
 
@@ -62,52 +50,4 @@ export const moveSegmentCondition = (
   conditions: SegmentCondition[],
   conditionId: string,
   direction: "down" | "up"
-): SegmentCondition[] => {
-  const currentIndex = conditions.findIndex((condition) => condition.id === conditionId);
-  const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= conditions.length) {
-    return conditions;
-  }
-
-  const nextConditions = [...conditions];
-  const [condition] = nextConditions.splice(currentIndex, 1);
-  nextConditions.splice(nextIndex, 0, condition);
-
-  return nextConditions;
-};
-
-const parseComparisonValue = (values: SegmentConditionFormValues): TargetingComparisonValue => {
-  if (arraySegmentOperators.includes(values.operator)) {
-    return values.comparisonValue
-      .split(",")
-      .map((value) => parsePrimitiveValue(value.trim()))
-      .filter((value) => value !== "");
-  }
-
-  if (numericSegmentOperators.includes(values.operator)) {
-    return Number(values.comparisonValue);
-  }
-
-  return parsePrimitiveValue(values.comparisonValue.trim());
-};
-
-const parsePrimitiveValue = (value: string): TargetingPrimitive | "" => {
-  if (!value) {
-    return "";
-  }
-
-  if (value === "true") {
-    return true;
-  }
-
-  if (value === "false") {
-    return false;
-  }
-
-  if (value === "null") {
-    return null;
-  }
-
-  return value;
-};
+): SegmentCondition[] => moveInOrderedList(conditions, conditionId, direction, (condition) => condition.id);

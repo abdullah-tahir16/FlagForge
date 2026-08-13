@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { AnalyticsFilters, AnalyticsRange } from "../../../core/types/Analytics";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
 import { useProjectAnalyticsUseCase } from "../../../infrastructure/useCases/Analytics/useProjectAnalyticsUseCase";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 
 const defaultRange: AnalyticsRange = "7d";
@@ -11,7 +10,6 @@ const defaultRange: AnalyticsRange = "7d";
 const percentOf = (count: number, total: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
 
 export const useProjectAnalyticsFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -91,7 +89,6 @@ export const useProjectAnalyticsFeature = () => {
     projectErrorMessage: analytics.projectError ? "Project could not be loaded." : null,
     projectId,
     title: analytics.project?.name ? `${analytics.project.name} analytics` : "Project analytics",
-    truePercentage,
-    ...app
+    truePercentage
   };
 };

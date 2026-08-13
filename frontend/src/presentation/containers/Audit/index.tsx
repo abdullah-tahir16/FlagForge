@@ -10,8 +10,6 @@ const AuditContainer = (_props: Props) => {
 
   return (
     <AppShell
-      apiStatus={feature.apiStatus}
-      isCheckingApi={feature.isCheckingApi}
       onLogout={feature.onLogout}
       organizationName={feature.currentOrganization?.name ?? "Dashboard"}
       userName={feature.currentUser ? `${feature.currentUser.firstName} ${feature.currentUser.lastName}` : "User"}
@@ -33,7 +31,6 @@ const AuditContainer = (_props: Props) => {
         onNextPage={feature.onNextPage}
         onPreviousPage={feature.onPreviousPage}
         pageNumber={feature.pageNumber}
-        pagination={feature.pagination}
         validateFilters={feature.validateFilters}
       />
     </AppShell>

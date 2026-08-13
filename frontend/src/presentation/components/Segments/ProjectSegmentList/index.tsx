@@ -147,7 +147,7 @@ const ProjectSegmentList = ({
         <Toolbar
           actions={
             <Badge tone="primary">
-              {segments.length} {segments.length === 1 ? "visible" : "visible"}
+              {segments.length} {segments.length === 1 ? "segment" : "segments"}
             </Badge>
           }
         >

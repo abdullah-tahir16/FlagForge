@@ -1,18 +1,7 @@
-export interface SdkKeyResponseDto {
-  createdAt: string;
-  environmentId: string;
-  id: string;
-  keyPrefix: string;
-  lastUsedAt: string | null;
-  name: string;
-  revokedAt: string | null;
-  updatedAt: string;
-}
+import type { CreateSdkKeyInput, CreatedSdkKey, SdkKey } from "../../../core/types/SdkKey";
 
-export interface CreatedSdkKeyResponseDto extends SdkKeyResponseDto {
-  key: string;
-}
+export type CreateSdkKeyRequestDto = CreateSdkKeyInput;
 
-export interface CreateSdkKeyRequestDto {
-  name: string;
-}
+export interface SdkKeyResponseDto extends SdkKey {}
+
+export interface CreatedSdkKeyResponseDto extends CreatedSdkKey {}

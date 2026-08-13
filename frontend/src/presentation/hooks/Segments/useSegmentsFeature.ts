@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Segment, SegmentCondition } from "../../../core/types/Segment";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 import { useProjectUseCase } from "../../../infrastructure/useCases/Project/useProjectUseCase";
 import { useSegmentUseCase } from "../../../infrastructure/useCases/Segment/useSegmentUseCase";
@@ -19,7 +18,6 @@ import {
 } from "./fns";
 
 export const useSegmentsFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -178,7 +176,6 @@ export const useSegmentsFeature = () => {
         : "Segments",
     updateSegmentErrorMessage: segments.updateSegmentError ? "Segment could not be updated." : null,
     validateCondition: validateWithSchema(segmentConditionFormSchema),
-    validateSegment: validateWithSchema(segmentFormSchema),
-    ...app
+    validateSegment: validateWithSchema(segmentFormSchema)
   };
 };

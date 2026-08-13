@@ -40,7 +40,7 @@ tasks.md      implementation checklist
 | 3 | `enhance-dashboard-ui-foundation` | Archived | strict dashboard UI/UX rules, shared primitives, shell, auth, projects polish |
 | 4 | `add-boolean-feature-flags` | Archived | boolean flags, per-environment config, enable/disable |
 | 5 | `add-sdk-keys-and-evaluation-api` | Archived | SDK key creation, hashed keys, single/all flag evaluation APIs |
-| 6 | `add-dashboard-flag-management` | Planned | dashboard project/flag views, environment switching, flag toggling |
+| 6 | `add-dashboard-flag-management` | Delivered (absorbed into other changes) | dashboard project/flag views, environment switching, flag toggling — shipped via `enhance-dashboard-ui-foundation` and `add-boolean-feature-flags` rather than as its own change |
 | 7 | `add-audit-logs` | Archived | audit events for important management operations |
 | 8 | `add-percentage-rollouts` | Archived | deterministic rollout buckets and rollout configuration |
 | 9 | `add-targeting-rules` | Archived | ordered rules, attribute operators, first-match evaluation |
@@ -49,7 +49,7 @@ tasks.md      implementation checklist
 | 12 | `add-realtime-updates` | Archived | authenticated SSE dashboard configuration notifications built on the cache invalidation boundary |
 | 13 | `add-js-sdk` | Archived | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
 | 14 | `add-analytics` | Archived | best-effort evaluation events, basic dashboard metrics, privacy-safe analytics |
-| 15 | `add-ci-and-docker-polish` | Active | CI workflow, Docker polish, production-oriented docs |
+| 15 | `add-ci-and-docker-polish` | Archived | CI workflow, Docker polish, production-oriented docs |
 
 ## MVP Milestones
 
@@ -138,7 +138,7 @@ Exit criteria:
 | v0.5 | SDK and analytics | JavaScript SDK, evaluation events, charts |
 | v1.0 | Portfolio polish | CI/CD, Docker polish, OpenAPI docs, screenshots, ADRs |
 
-Current operations step: `add-ci-and-docker-polish` tightens CI, Docker, full-stack Compose, environment examples, and smoke checks. Likely follow-up work after this is OpenAPI documentation, screenshots, ADRs, or team/member collaboration features.
+Current operations step: `polish-production-readiness` covers OpenAPI documentation, dead-code and UI cleanup, and a README restructure following the archived `add-ci-and-docker-polish` change. Likely follow-up work after this is screenshots, ADRs, or team/member collaboration features.
 
 ## Change Sizing Rule
 

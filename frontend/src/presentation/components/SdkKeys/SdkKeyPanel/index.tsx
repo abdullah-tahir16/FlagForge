@@ -230,6 +230,7 @@ const SdkKeyPanel = ({
       ) : null}
 
       <ConfirmDialog
+        confirmingLabel="Revoking"
         confirmLabel="Revoke key"
         description={`Revoke ${selectedRevokeSdkKey?.name ?? "this SDK key"}. Applications using it will stop evaluating flags.`}
         isConfirming={isRevoking}

@@ -10,8 +10,6 @@ const ProjectsContainer = (_props: Props) => {
 
   return (
     <AppShell
-      apiStatus={feature.apiStatus}
-      isCheckingApi={feature.isCheckingApi}
       onLogout={feature.onLogout}
       organizationName={feature.currentOrganization?.name ?? "Dashboard"}
       userName={feature.currentUser ? `${feature.currentUser.firstName} ${feature.currentUser.lastName}` : "User"}

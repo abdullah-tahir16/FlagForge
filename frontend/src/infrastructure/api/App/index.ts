@@ -1,7 +1,5 @@
 import axios from "axios";
-import type { AppHealth } from "../../../core/types/App";
 import { getAccessToken } from "../Auth/session";
-import type { HealthResponseDto } from "./types";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1";
 
@@ -22,12 +20,3 @@ apiClient.interceptors.request.use((config) => {
 
   return config;
 });
-
-export const getHealth = async (): Promise<AppHealth> => {
-  const response = await apiClient.get<HealthResponseDto>("/health");
-
-  return {
-    status: response.data.status,
-    service: response.data.service
-  };
-};

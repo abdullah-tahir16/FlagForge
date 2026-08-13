@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 import { useFeatureFlagUseCase } from "../../../infrastructure/useCases/FeatureFlag/useFeatureFlagUseCase";
 import { useProjectUseCase } from "../../../infrastructure/useCases/Project/useProjectUseCase";
@@ -9,7 +8,6 @@ import { validateWithSchema } from "../Auth/fns";
 import { featureFlagFormSchema } from "./data";
 
 export const useProjectFlagsFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -80,7 +78,6 @@ export const useProjectFlagsFeature = () => {
     projectErrorMessage: projects.projectError ? "Project could not be loaded." : null,
     projectId,
     title: projects.project ? `${projects.project.name} flags` : "Project flags",
-    validateFeatureFlag: validateWithSchema(featureFlagFormSchema),
-    ...app
+    validateFeatureFlag: validateWithSchema(featureFlagFormSchema)
   };
 };

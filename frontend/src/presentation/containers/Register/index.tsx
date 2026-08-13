@@ -25,7 +25,7 @@ const RegisterContainer = (_props: Props) => {
           type: "text"
         },
         {
-          label: "Organization",
+          label: "Organization name",
           name: "organizationName",
           type: "text"
         },
@@ -46,6 +46,7 @@ const RegisterContainer = (_props: Props) => {
       isSubmitting={feature.isSubmitting}
       onSubmit={feature.onSubmit}
       submitLabel="Create account"
+      submittingLabel="Creating account"
       title="Create account"
       validate={feature.validate}
     />

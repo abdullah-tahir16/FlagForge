@@ -9,12 +9,14 @@ export interface AuditLogResponse {
   actorUserId: string;
   createdAt: Date;
   environmentId: string | null;
+  environmentName: string | null;
   id: string;
   ipAddress: string | null;
   newValue: AuditSnapshot | null;
   oldValue: AuditSnapshot | null;
   organizationId: string;
   projectId: string | null;
+  projectName: string | null;
   resourceId: string;
   resourceName: string | null;
   resourceType: AuditResourceType;

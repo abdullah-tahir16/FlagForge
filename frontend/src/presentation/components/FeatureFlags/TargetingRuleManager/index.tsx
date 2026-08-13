@@ -267,7 +267,7 @@ const TargetingRuleManager = ({ config, flagId, projectId }: Props) => {
                       <Badge tone="primary">{rule.comparisonValue === null ? "" : formatComparisonValue(rule.comparisonValue)}</Badge>
                     </>
                   )}
-                  <Badge tone={rule.resultValue ? "success" : "neutral"}>serve {rule.resultValue ? "true" : "false"}</Badge>
+                  <Badge tone={rule.resultValue ? "success" : "neutral"}>{rule.resultValue ? "Serves true" : "Serves false"}</Badge>
                 </div>
               </div>
             </DataRow>

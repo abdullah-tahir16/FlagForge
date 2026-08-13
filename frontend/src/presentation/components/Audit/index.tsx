@@ -1,7 +1,6 @@
 import { Field, Form as FinalForm } from "react-final-form";
 import { Activity, Filter, ScrollText } from "lucide-react";
 import type { AuditLog } from "../../../core/types/Audit";
-import type { CursorPaginationMetadata } from "../../../core/types/Pagination";
 import { auditActions, auditResourceTypes } from "../../../core/types/Audit";
 import Alert from "../Common/Alert";
 import Badge from "../Common/Badge";
@@ -31,7 +30,6 @@ interface Props {
   onNextPage: () => void;
   onPreviousPage: () => void;
   pageNumber: number;
-  pagination: CursorPaginationMetadata;
   validateFilters: (values: Record<string, string>) => Partial<Record<string, string>>;
 }
 
@@ -48,7 +46,6 @@ const Audit = ({
   onNextPage,
   onPreviousPage,
   pageNumber,
-  pagination,
   validateFilters
 }: Props) => (
   <section className="min-w-0">
@@ -172,8 +169,12 @@ const Audit = ({
                     <p className="truncate text-base font-semibold text-app-text">{getAuditRowTitle(auditLog)}</p>
                     <p className="mt-1 text-sm text-app-text-muted">{getAuditRowSubtitle(auditLog)}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {auditLog.projectId ? <Badge tone="primary">Project {auditLog.projectId}</Badge> : null}
-                      {auditLog.environmentId ? <Badge tone="info">Environment {auditLog.environmentId}</Badge> : null}
+                      {auditLog.projectId ? (
+                        <Badge tone="primary">Project {auditLog.projectName ?? auditLog.projectId}</Badge>
+                      ) : null}
+                      {auditLog.environmentId ? (
+                        <Badge tone="info">Environment {auditLog.environmentName ?? auditLog.environmentId}</Badge>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -198,7 +199,7 @@ const Audit = ({
       isLoading={isLoadingAuditLogs || isRefetchingAuditLogs}
       onNextPage={onNextPage}
       onPreviousPage={onPreviousPage}
-      pageLabel={`Page ${pageNumber} · ${auditLogs.length} of ${pagination.limit} shown`}
+      pageLabel={`Page ${pageNumber} · ${auditLogs.length} shown`}
     />
   </section>
 );

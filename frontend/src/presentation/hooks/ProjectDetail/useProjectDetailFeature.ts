@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 import { useEnvironmentUseCase } from "../../../infrastructure/useCases/Environment/useEnvironmentUseCase";
 import { useProjectUseCase } from "../../../infrastructure/useCases/Project/useProjectUseCase";
@@ -12,7 +11,6 @@ import { environmentFormSchema, projectFormSchema } from "../Projects/data";
 import { sdkKeyFormSchema } from "../SdkKeys/data";
 
 export const useProjectDetailFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -155,7 +153,6 @@ export const useProjectDetailFeature = () => {
     title: projects.project?.name ?? "Project",
     updateEnvironmentErrorMessage: environments.updateEnvironmentError ? "Environment could not be updated." : null,
     updateProjectErrorMessage: projects.updateProjectError ? "Project could not be updated." : null,
-    updatingEnvironmentId: environments.updatingEnvironmentId,
-    ...app
+    updatingEnvironmentId: environments.updatingEnvironmentId
   };
 };

@@ -29,6 +29,7 @@ const LoginContainer = (_props: Props) => {
       isSubmitting={feature.isSubmitting}
       onSubmit={feature.onSubmit}
       submitLabel="Log in"
+      submittingLabel="Signing in"
       title="Log in"
       validate={feature.validate}
     />

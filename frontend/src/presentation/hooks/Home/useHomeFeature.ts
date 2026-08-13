@@ -2,11 +2,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentOrganization } from "../../../infrastructure/hooks/Organization/useCurrentOrganization";
 import { useUpdateCurrentOrganization } from "../../../infrastructure/hooks/Organization/useUpdateCurrentOrganization";
-import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 
 export const useHomeFeature = () => {
-  const app = useAppUseCase();
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
@@ -39,7 +37,6 @@ export const useHomeFeature = () => {
     onOrganizationSubmit,
     organizationName,
     navigate,
-    sections: ["Projects", "Flags", "Environments", "Audit"],
-    ...app
+    sections: ["Projects", "Flags", "Environments", "Audit"]
   };
 };

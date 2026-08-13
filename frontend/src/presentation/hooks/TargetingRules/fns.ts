@@ -1,11 +1,8 @@
-import type {
-  CreateTargetingRuleInput,
-  TargetingComparisonValue,
-  TargetingPrimitive,
-  TargetingRule
-} from "../../../core/types/TargetingRules";
-import { arrayTargetingRuleOperators, numericTargetingRuleOperators } from "./data";
+import type { CreateTargetingRuleInput, TargetingRule } from "../../../core/types/TargetingRules";
+import { formatComparisonValue, moveInOrderedList, parseComparisonValueForOperator } from "../../../core/utils/targeting";
 import type { TargetingRuleFormValues } from "./data";
+
+export { formatComparisonValue };
 
 export const defaultTargetingRuleFormValues: TargetingRuleFormValues = {
   attribute: "country",
@@ -14,14 +11,6 @@ export const defaultTargetingRuleFormValues: TargetingRuleFormValues = {
   resultValue: "true",
   segmentId: "",
   source: "ATTRIBUTE"
-};
-
-export const formatComparisonValue = (value: TargetingComparisonValue): string => {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  }
-
-  return value === null ? "null" : String(value);
 };
 
 export const getTargetingRuleInitialValues = (rule?: TargetingRule): TargetingRuleFormValues =>
@@ -36,20 +25,8 @@ export const getTargetingRuleInitialValues = (rule?: TargetingRule): TargetingRu
       }
     : defaultTargetingRuleFormValues;
 
-export const moveTargetingRule = (rules: TargetingRule[], ruleId: string, direction: "down" | "up"): TargetingRule[] => {
-  const currentIndex = rules.findIndex((rule) => rule.id === ruleId);
-  const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= rules.length) {
-    return rules;
-  }
-
-  const nextRules = [...rules];
-  const [rule] = nextRules.splice(currentIndex, 1);
-  nextRules.splice(nextIndex, 0, rule);
-
-  return nextRules;
-};
+export const moveTargetingRule = (rules: TargetingRule[], ruleId: string, direction: "down" | "up"): TargetingRule[] =>
+  moveInOrderedList(rules, ruleId, direction, (rule) => rule.id);
 
 export const parseTargetingRuleFormValues = (values: TargetingRuleFormValues): CreateTargetingRuleInput => {
   if (values.source === "SEGMENT") {
@@ -60,49 +37,13 @@ export const parseTargetingRuleFormValues = (values: TargetingRuleFormValues): C
     };
   }
 
+  const operator = values.operator ?? "EQUALS";
+
   return {
     attribute: (values.attribute ?? "").trim(),
-    comparisonValue: parseComparisonValue(values),
-    operator: values.operator ?? "EQUALS",
+    comparisonValue: parseComparisonValueForOperator(operator, values.comparisonValue ?? ""),
+    operator,
     resultValue: values.resultValue === "true",
     source: "ATTRIBUTE"
   };
-};
-
-const parseComparisonValue = (values: TargetingRuleFormValues): TargetingComparisonValue => {
-  const operator = values.operator ?? "EQUALS";
-  const comparisonValue = values.comparisonValue ?? "";
-
-  if (arrayTargetingRuleOperators.includes(operator)) {
-    return comparisonValue
-      .split(",")
-      .map((value) => parsePrimitiveValue(value.trim()))
-      .filter((value) => value !== "");
-  }
-
-  if (numericTargetingRuleOperators.includes(operator)) {
-    return Number(comparisonValue);
-  }
-
-  return parsePrimitiveValue(comparisonValue.trim());
-};
-
-const parsePrimitiveValue = (value: string): TargetingPrimitive | "" => {
-  if (!value) {
-    return "";
-  }
-
-  if (value === "true") {
-    return true;
-  }
-
-  if (value === "false") {
-    return false;
-  }
-
-  if (value === "null") {
-    return null;
-  }
-
-  return value;
 };

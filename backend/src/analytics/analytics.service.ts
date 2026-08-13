@@ -34,10 +34,6 @@ export class AnalyticsService {
     private readonly evaluationEventsRepository: Repository<EvaluationEvent>
   ) {}
 
-  async recordEvaluation(input: RecordEvaluationEventInput): Promise<void> {
-    await this.recordEvaluations([input]);
-  }
-
   async recordEvaluations(inputs: RecordEvaluationEventInput[]): Promise<void> {
     if (inputs.length === 0) {
       return;

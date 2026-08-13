@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { CommandBus, QueryBus } from "@nestjs/cqrs";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { getAuditContextFromRequest } from "../audit/audit-context";
 import type { AuthenticatedUser } from "../auth/authenticated-user";
@@ -17,6 +18,8 @@ import {
   UpdateTargetingRuleCommand
 } from "./targeting-rules.messages";
 
+@ApiTags("targeting-rules")
+@ApiBearerAuth("access-token")
 @Controller("projects/:projectId/flags/:flagId/environments/:environmentId/rules")
 @UseGuards(JwtAuthGuard)
 export class TargetingRulesController {
@@ -25,6 +28,8 @@ export class TargetingRulesController {
     private readonly queryBus: QueryBus
   ) {}
 
+  @ApiOperation({ summary: "List the targeting rules configured for a feature flag in an environment, in order" })
+  @ApiResponse({ status: 200, description: "The ordered list of targeting rules for the environment" })
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
@@ -35,6 +40,8 @@ export class TargetingRulesController {
     return this.queryBus.execute(new ListTargetingRulesQuery(user, projectId, flagId, environmentId));
   }
 
+  @ApiOperation({ summary: "Create a new targeting rule on a feature flag's environment configuration" })
+  @ApiResponse({ status: 201, description: "The newly created targeting rule" })
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -49,6 +56,8 @@ export class TargetingRulesController {
     );
   }
 
+  @ApiOperation({ summary: "Reorder the targeting rules for a feature flag's environment configuration" })
+  @ApiResponse({ status: 200, description: "The targeting rules in their new order" })
   @Post("reorder")
   @HttpCode(200)
   reorder(
@@ -64,6 +73,8 @@ export class TargetingRulesController {
     );
   }
 
+  @ApiOperation({ summary: "Update an existing targeting rule on a feature flag's environment configuration" })
+  @ApiResponse({ status: 200, description: "The updated targeting rule" })
   @Patch(":ruleId")
   update(
     @CurrentUser() user: AuthenticatedUser,
@@ -87,6 +98,8 @@ export class TargetingRulesController {
     );
   }
 
+  @ApiOperation({ summary: "Delete a targeting rule from a feature flag's environment configuration" })
+  @ApiResponse({ status: 204, description: "The targeting rule was deleted" })
   @Delete(":ruleId")
   @HttpCode(204)
   remove(
