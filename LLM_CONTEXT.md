@@ -149,6 +149,21 @@ Use this structure for frontend domains:
 - The frontend should centralize query invalidation decisions instead of adding stream handling to individual pages. Invalidate matching flag, flag detail, targeting rule, segment list/detail/options, and audit log query families.
 - Ignore events from other organizations. A stream outage should degrade silently and retry with bounded backoff while the user remains authenticated.
 
+## JavaScript SDK
+
+- Keep first-party SDK packages under `packages/`; the JavaScript SDK lives at `packages/js-sdk/` and is named `@flagforge/js-sdk`.
+- SDK packages are workspace libraries, not dashboard code. Do not import React, NestJS, Axios, dashboard hooks, or backend internals into SDK packages.
+- The JavaScript SDK uses the existing evaluation API endpoints:
+  - `POST /api/v1/sdk/evaluate/:flagKey`
+  - `POST /api/v1/sdk/evaluate`
+- SDK requests authenticate with the environment SDK key through `X-FlagForge-Key`.
+- Public SDK API should stay compact: `createFlagForgeClient`, `isEnabled`, `evaluate`, and `evaluateAll`.
+- SDK evaluation context accepts `userId` and primitive attributes only. Unsupported nested values should be ignored before request serialization.
+- SDK evaluation methods must fail safely. Network errors, timeouts, unauthorized responses, server errors, and malformed responses return fallback values instead of throwing from normal evaluation calls.
+- `isEnabled` returns only a boolean. Use `evaluate` and `evaluateAll` for reason metadata, environment metadata, and fallback/error details.
+- Use global `fetch` by default and allow an injected fetch implementation for tests and custom runtimes.
+- The first SDK is request-time evaluation only. Do not add polling, realtime streams, local persistent cache, analytics batching, or React providers without a separate OpenSpec change.
+
 ## Backend Guidance
 
 - Use NestJS modules by domain.

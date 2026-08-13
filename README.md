@@ -122,6 +122,29 @@ curl -X POST http://localhost:3001/api/v1/sdk/evaluate \
   -d '{"userId":"user-123"}'
 ```
 
+JavaScript SDK local example:
+
+```typescript
+import { createFlagForgeClient } from "@flagforge/js-sdk";
+
+const flagForge = createFlagForgeClient({
+  apiUrl: "http://localhost:3001/api/v1",
+  sdkKey: "ff_development_sk_local_demo_key",
+  timeoutMs: 3000
+});
+
+const enabled = await flagForge.isEnabled("new-checkout", {
+  country: "IT",
+  plan: "premium",
+  userId: "user-123"
+});
+
+const detail = await flagForge.evaluate("new-checkout", { userId: "user-123" });
+const allFlags = await flagForge.evaluateAll({ userId: "user-123" });
+```
+
+The SDK sends the SDK key through `X-FlagForge-Key`, passes primitive context attributes to the evaluation API, and returns safe fallback values for network errors, timeouts, unauthorized responses, server errors, or malformed responses.
+
 SDK evaluation request bodies accept `userId` for percentage rollout bucketing and additional primitive context attributes for targeting rules and segment membership. Evaluation order is: disabled config, segment-source targeting rules, direct attribute targeting rules, percentage rollout fallback, then static configured value. Partial rollouts without `userId` fail safely to `false` with `ROLLOUT_CONTEXT_MISSING`.
 
 Redis is used as optional performance infrastructure for SDK evaluation. When `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` is configured, the backend caches one complete evaluable snapshot per environment under a versioned key:

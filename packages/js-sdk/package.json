@@ -1,0 +1,42 @@
+{
+  "name": "@flagforge/js-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JavaScript SDK for evaluating FlagForge feature flags.",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && node scripts/write-esm-package.cjs",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "jest --config jest.config.cjs"
+  },
+  "keywords": [
+    "feature-flags",
+    "flagforge",
+    "sdk"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=26.7.0",
+    "pnpm": ">=11.21.0"
+  }
+}
