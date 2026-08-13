@@ -1,10 +1,18 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, FolderKanban, ScrollText, ToggleLeft, UsersRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Common/Button";
 import PageHeader from "../../components/Common/PageHeader";
 import Panel from "../../components/Common/Panel";
 import TextInput from "../../components/Common/TextInput";
 import { useHomeFeature } from "../../hooks/Home/useHomeFeature";
+
+const sectionIcons: Record<string, typeof FolderKanban> = {
+  Audit: ScrollText,
+  Flags: ToggleLeft,
+  Projects: FolderKanban,
+  Segments: UsersRound
+};
 
 interface Props {}
 
@@ -49,11 +57,25 @@ const HomeContainer = (_props: Props) => {
       </Panel>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {sections.map((section) => (
-          <Panel key={section} className="p-5">
-            <h2 className="text-base font-medium text-app-text">{section}</h2>
-          </Panel>
-        ))}
+        {sections.map((section) => {
+          const Icon = sectionIcons[section.label] ?? FolderKanban;
+
+          return (
+            <Link
+              className="group block rounded-app focus:outline-none focus:ring-2 focus:ring-app-focus focus:ring-offset-2"
+              key={section.label}
+              to={section.to}
+            >
+              <Panel className="h-full p-5 transition duration-app group-hover:border-app-primary/50 group-hover:bg-app-surface-muted">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-app border border-app-border bg-app-primary-muted text-app-primary">
+                  <Icon aria-hidden="true" className="h-4 w-4" />
+                </span>
+                <h2 className="mt-3 text-base font-semibold text-app-text">{section.label}</h2>
+                <p className="mt-1 text-sm leading-6 text-app-text-muted">{section.description}</p>
+              </Panel>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="mt-6">

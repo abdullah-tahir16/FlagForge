@@ -37,6 +37,11 @@ export const useHomeFeature = () => {
     onOrganizationSubmit,
     organizationName,
     navigate,
-    sections: ["Projects", "Flags", "Environments", "Audit"]
+    sections: [
+      { description: "Create and manage projects and their environments.", label: "Projects", to: "/projects" },
+      { description: "Toggle boolean flags and configure rollouts per environment.", label: "Flags", to: "/flags" },
+      { description: "Build reusable segments for flag targeting rules.", label: "Segments", to: "/segments" },
+      { description: "Review the organization's management activity.", label: "Audit", to: "/audit" }
+    ]
   };
 };
