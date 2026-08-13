@@ -62,6 +62,7 @@ const createService = () => {
       Array.from(environments.values())
         .filter((environment) => environment.projectId === project.id)
         .forEach((environment) => environments.delete(environment.id));
+      Object.assign(project, { id: undefined });
     }),
     save: jest.fn(async (project: Project) => {
       const savedProject = {
@@ -190,14 +191,16 @@ describe("ProjectsService", () => {
 
     await service.remove(owner, "project-1");
 
-    expect(projectsRepository.remove).toHaveBeenCalledWith(expect.objectContaining({ id: "project-1" }));
+    expect(projectsRepository.remove).toHaveBeenCalledTimes(1);
     expect(projects.has("project-1")).toBe(false);
     expect(environments.has("environment-1")).toBe(false);
     expect(auditService.record).toHaveBeenCalledWith(
       owner,
       expect.objectContaining({
         action: AuditAction.ProjectDeleted,
-        oldValue: expect.objectContaining({ key: "checkout", name: "Checkout" })
+        oldValue: expect.objectContaining({ key: "checkout", name: "Checkout" }),
+        projectId: "project-1",
+        resourceId: "project-1"
       }),
       undefined
     );

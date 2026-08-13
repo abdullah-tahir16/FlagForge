@@ -2,10 +2,14 @@ import { Environment } from "../src/environments/environment.entity";
 import { EnvironmentFlagConfig } from "../src/feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../src/feature-flags/feature-flag.entity";
 import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
+import { EvaluationSnapshotLoader } from "../src/evaluations/evaluation-snapshot.loader";
 import { EvaluationsService } from "../src/evaluations/evaluations.service";
 import { SdkEvaluationContext } from "../src/evaluations/sdk-evaluation-context";
 import { TargetingRule } from "../src/targeting-rules/targeting-rule.entity";
 import { TargetingRuleOperator } from "../src/targeting-rules/targeting-rule-operator.enum";
+import { TargetingRuleSource } from "../src/targeting-rules/targeting-rule-source.enum";
+import { Segment } from "../src/segments/segment.entity";
+import { SegmentMatchMode } from "../src/segments/segment-match-mode.enum";
 
 interface MockFeatureFlagQueryBuilder {
   addOrderBy: jest.MockedFunction<(sort: string, order: string) => MockFeatureFlagQueryBuilder>;
@@ -67,13 +71,43 @@ const createRule = (overrides: Partial<TargetingRule> = {}): TargetingRule =>
     operator: TargetingRuleOperator.Equals,
     resultValue: true,
     sortOrder: 1,
+    source: TargetingRuleSource.Attribute,
     updatedAt: now,
     ...overrides
   }) as TargetingRule;
 
+const createSegment = (overrides: Partial<Segment> = {}): Segment =>
+  ({
+    conditions: [
+      {
+        attribute: "plan",
+        comparisonValue: "PREMIUM",
+        createdAt: now,
+        id: "condition-1",
+        operator: TargetingRuleOperator.Equals,
+        segmentId: "segment-1",
+        sortOrder: 1,
+        updatedAt: now
+      }
+    ],
+    createdAt: now,
+    description: null,
+    id: "segment-1",
+    key: "premium-users",
+    matchMode: SegmentMatchMode.MatchAll,
+    name: "Premium Users",
+    projectId: "project-1",
+    updatedAt: now,
+    ...overrides
+  }) as Segment;
+
 const createService = () => {
   const configs = new Map<string, EnvironmentFlagConfig>();
   const flags = new Map<string, FeatureFlag>();
+  const evaluationCacheService = {
+    readEnvironmentSnapshot: jest.fn(async () => null),
+    writeEnvironmentSnapshot: jest.fn(async () => undefined)
+  };
   const featureFlagsRepository = {
     createQueryBuilder: jest.fn(() => {
       const state = { environmentId: "", projectId: "" };
@@ -105,31 +139,83 @@ const createService = () => {
       });
 
       return builder;
-    }),
-    findOne: jest.fn(async ({ where }: { where: Partial<FeatureFlag> }) =>
-      Array.from(flags.values()).find((flag) => flag.key === where.key && flag.projectId === where.projectId)
-    )
+    })
   };
-  const configsRepository = {
-    findOne: jest.fn(async ({ where }: { where: Partial<EnvironmentFlagConfig> }) =>
-      Array.from(configs.values()).find(
-        (config) => config.environmentId === where.environmentId && config.featureFlagId === where.featureFlagId
-      )
-    )
-  };
-  const service = new EvaluationsService(configsRepository as never, featureFlagsRepository as never);
+  const snapshotLoader = new EvaluationSnapshotLoader(evaluationCacheService as never, featureFlagsRepository as never);
+  const service = new EvaluationsService(snapshotLoader);
 
-  return { configs, configsRepository, flags, service };
+  return { configs, evaluationCacheService, featureFlagsRepository, flags, service };
 };
 
 describe("EvaluationsService", () => {
   it("returns the configured value for an enabled boolean flag", async () => {
-    const { configs, flags, service } = createService();
+    const { configs, evaluationCacheService, flags, service } = createService();
     flags.set("flag-1", createFlag());
     configs.set("config-1", createConfig({ value: true }));
 
     await expect(service.evaluateOne(context, "new-checkout")).resolves.toMatchObject({
       key: "new-checkout",
+      reason: "STATIC",
+      value: true
+    });
+    expect(evaluationCacheService.writeEnvironmentSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        environment: expect.objectContaining({ id: "environment-1" }),
+        flags: [expect.objectContaining({ key: "new-checkout" })]
+      })
+    );
+  });
+
+  it("uses a valid cache hit for single and all flag evaluation without loading from PostgreSQL", async () => {
+    const { evaluationCacheService, featureFlagsRepository, service } = createService();
+    evaluationCacheService.readEnvironmentSnapshot.mockResolvedValue({
+      environment: {
+        id: "environment-1",
+        key: "development",
+        name: "Development",
+        projectId: "project-1"
+      },
+      flags: [
+        {
+          config: {
+            enabled: true,
+            environmentId: "environment-1",
+            featureFlagId: "flag-1",
+            id: "config-1",
+            rolloutPercentage: 100,
+            value: true
+          },
+          id: "flag-1",
+          key: "new-checkout",
+          name: "New Checkout",
+          targetingRules: [],
+          type: FeatureFlagType.Boolean
+        }
+      ],
+      projectId: "project-1",
+      schemaVersion: 1
+    } as never);
+
+    await expect(service.evaluateOne(context, "new-checkout")).resolves.toMatchObject({
+      reason: "STATIC",
+      value: true
+    });
+    await expect(service.evaluateAll(context)).resolves.toMatchObject({
+      flags: { "new-checkout": true },
+      reasons: { "new-checkout": { reason: "STATIC", value: true } }
+    });
+    expect(featureFlagsRepository.createQueryBuilder).not.toHaveBeenCalled();
+    expect(evaluationCacheService.writeEnvironmentSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("falls back to PostgreSQL when cache reads or writes fail", async () => {
+    const { configs, evaluationCacheService, flags, service } = createService();
+    flags.set("flag-1", createFlag());
+    configs.set("config-1", createConfig({ value: true }));
+    evaluationCacheService.readEnvironmentSnapshot.mockRejectedValueOnce(new Error("redis read failed"));
+    evaluationCacheService.writeEnvironmentSnapshot.mockRejectedValueOnce(new Error("redis write failed"));
+
+    await expect(service.evaluateOne(context, "new-checkout")).resolves.toMatchObject({
       reason: "STATIC",
       value: true
     });
@@ -214,6 +300,39 @@ describe("EvaluationsService", () => {
     await expect(service.evaluateOne(context, "new-checkout", { country: "IT", plan: "PREMIUM" })).resolves.toMatchObject({
       reason: "TARGETING_RULE_MATCH",
       targetingRule: { attribute: "plan", id: "rule-2", operator: TargetingRuleOperator.Equals },
+      value: true
+    });
+  });
+
+  it("evaluates segment targeting rules before direct attribute rules and rollout", async () => {
+    const { configs, flags, service } = createService();
+    const segment = createSegment();
+    flags.set("flag-1", createFlag());
+    configs.set(
+      "config-1",
+      createConfig({
+        rolloutPercentage: 0,
+        targetingRules: [
+          createRule({
+            attribute: null,
+            comparisonValue: null,
+            id: "segment-rule-1",
+            operator: null,
+            resultValue: true,
+            segment,
+            segmentId: segment.id,
+            sortOrder: 20,
+            source: TargetingRuleSource.Segment
+          }),
+          createRule({ attribute: "country", comparisonValue: "IT", id: "rule-2", resultValue: false, sortOrder: 1 })
+        ]
+      })
+    );
+
+    await expect(service.evaluateOne(context, "new-checkout", { country: "IT", plan: "PREMIUM" })).resolves.toMatchObject({
+      reason: "SEGMENT_TARGETING_MATCH",
+      segment: { id: "segment-1", key: "premium-users", name: "Premium Users" },
+      targetingRule: { id: "segment-rule-1", source: TargetingRuleSource.Segment },
       value: true
     });
   });
@@ -311,6 +430,43 @@ describe("EvaluationsService", () => {
       reasons: {
         "beta-navigation": { reason: "TARGETING_RULE_MATCH", targetingRule: { id: "rule-2" }, value: true },
         "new-checkout": { reason: "TARGETING_RULE_MATCH", targetingRule: { id: "rule-1" }, value: true }
+      }
+    });
+  });
+
+  it("applies segment targeting independently when evaluating all flags", async () => {
+    const { configs, flags, service } = createService();
+    const segment = createSegment();
+    flags.set("flag-1", createFlag({ key: "new-checkout" }));
+    configs.set(
+      "config-1",
+      createConfig({
+        featureFlagId: "flag-1",
+        targetingRules: [
+          createRule({
+            attribute: null,
+            comparisonValue: null,
+            id: "segment-rule-1",
+            operator: null,
+            segment,
+            segmentId: segment.id,
+            source: TargetingRuleSource.Segment
+          })
+        ]
+      })
+    );
+
+    await expect(service.evaluateAll(context, { plan: "PREMIUM" })).resolves.toMatchObject({
+      flags: {
+        "new-checkout": true
+      },
+      reasons: {
+        "new-checkout": {
+          reason: "SEGMENT_TARGETING_MATCH",
+          segment: { id: "segment-1" },
+          targetingRule: { id: "segment-rule-1", source: TargetingRuleSource.Segment },
+          value: true
+        }
       }
     });
   });

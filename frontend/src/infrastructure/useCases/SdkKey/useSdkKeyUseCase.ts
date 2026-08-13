@@ -30,7 +30,7 @@ export const useSdkKeyUseCase = (projectId?: string, environmentId?: string) => 
     isRevokingSdkKey: revokeSdkKeyMutation.isPending,
     revokeSdkKey,
     revokeSdkKeyError: revokeSdkKeyMutation.error,
-    revokingSdkKeyId: revokeSdkKeyMutation.variables?.sdkKeyId,
+    revokingSdkKeyId: revokeSdkKeyMutation.isPending ? revokeSdkKeyMutation.variables?.sdkKeyId : undefined,
     sdkKeys: sdkKeysQuery.data ?? [],
     sdkKeysError: sdkKeysQuery.error
   };

@@ -12,6 +12,7 @@ import {
 import { Environment } from "../environments/environment.entity";
 import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { Organization } from "../organizations/organization.entity";
+import { Segment } from "../segments/segment.entity";
 
 @Entity({ name: "projects" })
 @Index("UQ_projects_organization_key", ["organizationId", "key"], { unique: true })
@@ -40,6 +41,9 @@ export class Project {
 
   @OneToMany(() => FeatureFlag, (featureFlag) => featureFlag.project)
   featureFlags!: FeatureFlag[];
+
+  @OneToMany(() => Segment, (segment) => segment.project)
+  segments!: Segment[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;

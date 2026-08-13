@@ -24,7 +24,7 @@ cp .env.example .env
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 pnpm install
-docker compose up -d postgres
+docker compose up -d postgres redis
 pnpm seed
 pnpm dev
 ```
@@ -71,6 +71,22 @@ GET    /api/v1/projects/:projectId/flags/:flagId
 PATCH  /api/v1/projects/:projectId/flags/:flagId
 DELETE /api/v1/projects/:projectId/flags/:flagId
 PATCH  /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId
+GET    /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules
+POST   /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules
+PATCH  /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules/:ruleId
+DELETE /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules/:ruleId
+POST   /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules/reorder
+
+GET    /api/v1/projects/:projectId/segments
+GET    /api/v1/projects/:projectId/segments/options
+POST   /api/v1/projects/:projectId/segments
+GET    /api/v1/projects/:projectId/segments/:segmentId
+PATCH  /api/v1/projects/:projectId/segments/:segmentId
+DELETE /api/v1/projects/:projectId/segments/:segmentId
+POST   /api/v1/projects/:projectId/segments/:segmentId/conditions
+PATCH  /api/v1/projects/:projectId/segments/:segmentId/conditions/:conditionId
+DELETE /api/v1/projects/:projectId/segments/:segmentId/conditions/:conditionId
+POST   /api/v1/projects/:projectId/segments/:segmentId/conditions/reorder
 
 GET    /api/v1/projects/:projectId/environments/:environmentId/sdk-keys
 POST   /api/v1/projects/:projectId/environments/:environmentId/sdk-keys
@@ -84,7 +100,7 @@ POST /api/v1/sdk/evaluate
 
 Authentication uses a short-lived access token returned in JSON and a rotating refresh token stored as an httpOnly cookie. The refresh token is stored only as a hash in PostgreSQL and is not exposed to frontend JavaScript.
 
-The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, Development, Staging, and Production environments, plus `New Checkout` and `Beta Navigation` boolean feature flags for local dashboard testing. `New Checkout` includes representative rollout percentages: Development 25%, Staging 50%, and Production 0%. It also creates representative audit entries and this local Development SDK key:
+The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, Development, Staging, and Production environments, plus `New Checkout` and `Beta Navigation` boolean feature flags for local dashboard testing. `New Checkout` includes representative rollout percentages: Development 25%, Staging 50%, and Production 0%. It also creates reusable `Premium Italian Users` and `Internal Employees` segments, ordered segment conditions, segment-source targeting rules, representative audit entries, and this local Development SDK key:
 
 ```text
 ff_development_sk_local_demo_key
@@ -104,7 +120,24 @@ curl -X POST http://localhost:3001/api/v1/sdk/evaluate \
   -d '{"userId":"user-123"}'
 ```
 
-SDK evaluation request bodies accept `userId` for percentage rollout bucketing and may include additional primitive context attributes for future targeting. Partial rollouts without `userId` fail safely to `false` with `ROLLOUT_CONTEXT_MISSING`.
+SDK evaluation request bodies accept `userId` for percentage rollout bucketing and additional primitive context attributes for targeting rules and segment membership. Evaluation order is: disabled config, segment-source targeting rules, direct attribute targeting rules, percentage rollout fallback, then static configured value. Partial rollouts without `userId` fail safely to `false` with `ROLLOUT_CONTEXT_MISSING`.
+
+Redis is used as optional performance infrastructure for SDK evaluation. When `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` is configured, the backend caches one complete evaluable snapshot per environment under a versioned key:
+
+```text
+flagforge:evaluation:v1:environment:<environmentId>
+```
+
+Local cache variables:
+
+```text
+REDIS_URL=redis://localhost:6379
+REDIS_HOST=localhost
+REDIS_PORT=6379
+EVALUATION_CACHE_TTL_SECONDS=300
+```
+
+On cache miss, invalid JSON, unsupported cache schema version, or Redis outage, evaluation falls back to PostgreSQL and preserves the same response semantics. Management mutations that can change evaluation results delete affected environment snapshot keys after successful writes.
 
 ## Project Progress
 

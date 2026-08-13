@@ -12,5 +12,12 @@ export enum AuditAction {
   TargetingRuleCreated = "TARGETING_RULE_CREATED",
   TargetingRuleUpdated = "TARGETING_RULE_UPDATED",
   TargetingRuleDeleted = "TARGETING_RULE_DELETED",
-  TargetingRuleReordered = "TARGETING_RULE_REORDERED"
+  TargetingRuleReordered = "TARGETING_RULE_REORDERED",
+  SegmentCreated = "SEGMENT_CREATED",
+  SegmentUpdated = "SEGMENT_UPDATED",
+  SegmentDeleted = "SEGMENT_DELETED",
+  SegmentConditionCreated = "SEGMENT_CONDITION_CREATED",
+  SegmentConditionUpdated = "SEGMENT_CONDITION_UPDATED",
+  SegmentConditionDeleted = "SEGMENT_CONDITION_DELETED",
+  SegmentConditionReordered = "SEGMENT_CONDITION_REORDERED"
 }

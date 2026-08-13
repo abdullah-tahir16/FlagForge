@@ -71,6 +71,7 @@ Use this structure for frontend domains:
 - Authenticated routes must render inside the shared dashboard shell. Do not add page-local top navigation when the shell can own workspace, navigation, API status, user context, and logout.
 - Desktop dashboard layout uses a persistent sidebar plus top bar. Mobile layout must keep primary navigation reachable at 375px without horizontal scrolling.
 - Navigation must include icon and label for Overview, Projects, Flags, Environments, and Audit. Disabled navigation states must be visually clear and use `aria-disabled` when a route is unavailable.
+- Segment management routes must render under the shared dashboard shell and use the Segments nav item. Project-scoped segment routes live under `/projects/:projectId/segments`.
 - Active route state cannot rely on color alone. Include a persistent indicator such as a border, rail, background, or font-weight shift.
 - Use `lucide-react` icons for structural actions and navigation. Do not use emoji, decorative ad hoc SVG, or text-only icon stand-ins for common actions. Icon-only buttons need `aria-label` and `title`.
 - Use shared primitives from `frontend/src/presentation/components/Common` for dashboard screens: `PageHeader`, `Toolbar`, `Badge`, `Alert`, `EmptyState`, `Skeleton`, `ConfirmDialog`, and dense row/list primitives.
@@ -104,12 +105,34 @@ Use this structure for frontend domains:
 - Targeting rules are scoped to `EnvironmentFlagConfig`, not only to `FeatureFlag`, so each environment can have different rules.
 - Rule management endpoints live under `projects/:projectId/flags/:flagId/environments/:environmentId/rules`.
 - Targeting rule lists are intentionally unpaginated because evaluation order requires the full rule stack.
-- A targeting rule has one condition for the current MVP: `attribute`, `operator`, `comparisonValue`, `resultValue`, and `sortOrder`.
+- A targeting rule has one source-specific condition for the current MVP. `ATTRIBUTE` rules use `attribute`, `operator`, `comparisonValue`, `resultValue`, and `sortOrder`. `SEGMENT` rules use `segmentId`, `resultValue`, and `sortOrder`.
 - Supported MVP operators are `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IN`, `NOT_IN`, `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, and `LESS_THAN_OR_EQUAL`.
-- SDK evaluation order is disabled check, ordered targeting rules first-match-wins, percentage rollout fallback, then static configured value behavior.
+- SDK evaluation order is disabled check, ordered segment-source rules first-match-wins, ordered attribute-source rules first-match-wins, percentage rollout fallback, then static configured value behavior.
 - Disabled flag configs must return false before targeting or rollout logic.
 - Rule mutations must emit audit events using targeting rule action/resource metadata.
 - Frontend targeting forms must use React Final Form and Zod, shared Common controls, semantic app theme tokens, lucide icons, and compact dashboard rows.
+
+## Segments
+
+- Segments are project-scoped reusable cohorts and must not be shared across projects or organizations.
+- Segment list APIs use cursor pagination with the shared backend pagination helpers and frontend `useCursorPagination`/`PaginationControls`.
+- Segment condition lists are unpaginated, ordered, and edited as a complete stack.
+- Segment match modes are `MATCH_ALL` and `MATCH_ANY`. Empty segments do not match.
+- Segment conditions reuse targeting rule operators and comparison-value validation.
+- Referenced segments cannot be deleted while targeting rules point at them.
+- Segment mutations must emit audit events using `SEGMENT` and `SEGMENT_CONDITION` resource metadata.
+- Demo seed data should keep representative segments and segment-source targeting rules idempotent.
+
+## Redis Evaluation Cache
+
+- Redis is optional performance infrastructure, not correctness infrastructure. SDK evaluation must fall back to PostgreSQL when Redis is disabled, unavailable, returns an operation error, contains invalid JSON, or contains an unsupported cache schema version.
+- The backend caches complete environment evaluation snapshots, not per-flag records. Cache keys use `flagforge:evaluation:v1:environment:<environmentId>`.
+- Cached snapshots must include schema version, project id, environment metadata, boolean flag metadata, environment config values, rollout percentage, ordered targeting rules, referenced segment metadata, and ordered segment conditions.
+- Cache writes must use `EVALUATION_CACHE_TTL_SECONDS` as a bounded lifetime. TTL is a backstop; service-level invalidation is the primary freshness mechanism.
+- Feature flag create/update/delete and environment flag config updates must invalidate affected environment snapshot keys after successful writes.
+- Targeting rule create/update/delete/reorder must invalidate the one affected environment snapshot.
+- Segment metadata, match mode, and condition mutations must invalidate only environments whose targeting rules reference the segment. Unreferenced segment mutations should not delete cache entries.
+- Cache invalidation failures must not fail successful management mutations or expose raw Redis details to API clients.
 
 ## Backend Guidance
 

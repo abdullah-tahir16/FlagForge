@@ -4,5 +4,7 @@ export enum AuditResourceType {
   FeatureFlag = "FEATURE_FLAG",
   EnvironmentFlagConfig = "ENVIRONMENT_FLAG_CONFIG",
   SdkKey = "SDK_KEY",
-  TargetingRule = "TARGETING_RULE"
+  TargetingRule = "TARGETING_RULE",
+  Segment = "SEGMENT",
+  SegmentCondition = "SEGMENT_CONDITION"
 }

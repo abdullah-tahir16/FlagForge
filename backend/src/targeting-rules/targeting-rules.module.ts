@@ -6,6 +6,7 @@ import { Environment } from "../environments/environment.entity";
 import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { ProjectsModule } from "../projects/projects.module";
+import { Segment } from "../segments/segment.entity";
 import { TargetingRule } from "./targeting-rule.entity";
 import { TargetingRulesController } from "./targeting-rules.controller";
 import { targetingRuleHandlers } from "./targeting-rules.handlers";
@@ -18,7 +19,7 @@ import { TargetingRulesService } from "./targeting-rules.service";
     AuditModule,
     CqrsModule,
     ProjectsModule,
-    TypeOrmModule.forFeature([Environment, EnvironmentFlagConfig, FeatureFlag, TargetingRule])
+    TypeOrmModule.forFeature([Environment, EnvironmentFlagConfig, FeatureFlag, Segment, TargetingRule])
   ],
   providers: [TargetingRulesService, ...targetingRuleHandlers]
 })

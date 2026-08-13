@@ -36,7 +36,7 @@ export const useFeatureFlagUseCase = (projectId?: string, flagId?: string) => {
     createFeatureFlagError: createFeatureFlagMutation.error,
     deleteFeatureFlag,
     deleteFeatureFlagError: deleteFeatureFlagMutation.error,
-    deletingFeatureFlagId: deleteFeatureFlagMutation.variables?.flagId,
+    deletingFeatureFlagId: deleteFeatureFlagMutation.isPending ? deleteFeatureFlagMutation.variables?.flagId : undefined,
     featureFlag: featureFlagQuery.data,
     featureFlagError: featureFlagQuery.error,
     featureFlags: featureFlagsQuery.data ?? [],
@@ -49,7 +49,9 @@ export const useFeatureFlagUseCase = (projectId?: string, flagId?: string) => {
     isUpdatingFeatureFlag: updateFeatureFlagMutation.isPending,
     updateEnvironmentFlagConfig,
     updateEnvironmentFlagConfigError: updateEnvironmentFlagConfigMutation.error,
-    updatingEnvironmentFlagConfigId: updateEnvironmentFlagConfigMutation.variables?.environmentId,
+    updatingEnvironmentFlagConfigId: updateEnvironmentFlagConfigMutation.isPending
+      ? updateEnvironmentFlagConfigMutation.variables?.environmentId
+      : undefined,
     updateFeatureFlag,
     updateFeatureFlagError: updateFeatureFlagMutation.error
   };

@@ -135,16 +135,20 @@ export class ProjectsService {
 
   async remove(user: AuthenticatedUser, projectId: string, auditContext?: AuditContext): Promise<void> {
     const project = await this.findProjectForUser(user, projectId);
+    const oldValue = this.projectSnapshot(project);
+    const resourceId = project.id;
+    const resourceName = project.name;
+
     await this.projectsRepository.remove(project);
     await this.auditService.record(
       user,
       {
         action: AuditAction.ProjectDeleted,
         newValue: null,
-        oldValue: this.projectSnapshot(project),
-        projectId: project.id,
-        resourceId: project.id,
-        resourceName: project.name,
+        oldValue,
+        projectId: resourceId,
+        resourceId,
+        resourceName,
         resourceType: AuditResourceType.Project
       },
       auditContext

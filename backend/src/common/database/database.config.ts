@@ -1,6 +1,7 @@
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 
 const toBoolean = (value: string | undefined): boolean => value === "true";
+const nodeEnv = (): string => process.env.NODE_ENV ?? "development";
 
 export const databaseOptions = (): TypeOrmModuleOptions => ({
   type: "postgres",
@@ -10,9 +11,9 @@ export const databaseOptions = (): TypeOrmModuleOptions => ({
   password: process.env.POSTGRES_PASSWORD ?? "flagforge",
   database: process.env.POSTGRES_DB ?? "flagforge",
   autoLoadEntities: true,
-  synchronize: process.env.NODE_ENV !== "production" && toBoolean(process.env.TYPEORM_SYNCHRONIZE),
+  synchronize: nodeEnv() === "development" && toBoolean(process.env.TYPEORM_SYNCHRONIZE),
   migrations: ["dist/common/database/migrations/*.js"],
-  migrationsRun: false,
+  migrationsRun: nodeEnv() === "development" && process.env.TYPEORM_MIGRATIONS_RUN !== "false",
   ssl: toBoolean(process.env.DATABASE_SSL)
 });
 

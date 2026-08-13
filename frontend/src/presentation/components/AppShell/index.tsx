@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import type { LucideIcon } from "lucide-react";
-import { FolderKanban, Layers, LayoutDashboard, LogOut, ScrollText, ToggleLeft } from "lucide-react";
+import { FolderKanban, Layers, LayoutDashboard, LogOut, ScrollText, ToggleLeft, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import Button from "../Common/Button";
 import StatusBadge from "../Common/StatusBadge";
@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Overview", to: "/" },
   { activeWhen: (pathname) => pathname === "/projects" || /^\/projects\/[^/]+$/.test(pathname), icon: FolderKanban, label: "Projects", to: "/projects" },
   { activeWhen: (pathname) => pathname === "/flags" || pathname.includes("/flags"), icon: ToggleLeft, label: "Flags", to: "/flags" },
+  { activeWhen: (pathname) => pathname === "/segments" || pathname.includes("/segments"), icon: UsersRound, label: "Segments", to: "/segments" },
   { disabled: true, icon: Layers, label: "Environments", to: "/environments" },
   { activeWhen: (pathname) => pathname === "/audit", icon: ScrollText, label: "Audit", to: "/audit" }
 ];
@@ -108,7 +109,7 @@ const AppShell = ({ apiStatus, isCheckingApi, children, onLogout, organizationNa
               </div>
             </div>
 
-            <nav aria-label="Mobile primary" className="grid grid-cols-2 gap-2 text-sm font-semibold sm:grid-cols-5 lg:hidden">
+            <nav aria-label="Mobile primary" className="grid grid-cols-2 gap-2 text-sm font-semibold sm:grid-cols-3 md:grid-cols-6 lg:hidden">
               {navItems.map((item) => {
                 const Icon = item.icon;
 

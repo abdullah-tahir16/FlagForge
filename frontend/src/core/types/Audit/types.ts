@@ -14,7 +14,14 @@ export const auditActions = [
   "TARGETING_RULE_CREATED",
   "TARGETING_RULE_UPDATED",
   "TARGETING_RULE_DELETED",
-  "TARGETING_RULE_REORDERED"
+  "TARGETING_RULE_REORDERED",
+  "SEGMENT_CREATED",
+  "SEGMENT_UPDATED",
+  "SEGMENT_DELETED",
+  "SEGMENT_CONDITION_CREATED",
+  "SEGMENT_CONDITION_UPDATED",
+  "SEGMENT_CONDITION_DELETED",
+  "SEGMENT_CONDITION_REORDERED"
 ] as const;
 
 export const auditResourceTypes = [
@@ -23,7 +30,9 @@ export const auditResourceTypes = [
   "FEATURE_FLAG",
   "ENVIRONMENT_FLAG_CONFIG",
   "SDK_KEY",
-  "TARGETING_RULE"
+  "TARGETING_RULE",
+  "SEGMENT",
+  "SEGMENT_CONDITION"
 ] as const;
 
 export type AuditAction = (typeof auditActions)[number];

@@ -44,9 +44,9 @@ tasks.md      implementation checklist
 | 7 | `add-audit-logs` | Archived | audit events for important management operations |
 | 8 | `add-percentage-rollouts` | Archived | deterministic rollout buckets and rollout configuration |
 | 9 | `add-targeting-rules` | Archived | ordered rules, attribute operators, first-match evaluation |
-| 10 | `add-segments` | Active | reusable user segments and segment matching |
-| 11 | `add-redis-cache` | Planned | cached environment flag configuration and invalidation |
-| 12 | `add-realtime-updates` | Planned | WebSocket flag update notifications |
+| 10 | `add-segments` | Archived | reusable user segments, segment matching, and segment-source targeting |
+| 11 | `add-redis-cache` | Active | Redis-backed environment evaluation snapshots, fallback, and invalidation |
+| 12 | `add-realtime-updates` | Planned | WebSocket flag update notifications built on the cache invalidation boundary |
 | 13 | `add-js-sdk` | Planned | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
 | 14 | `add-analytics` | Planned | evaluation events, basic dashboard metrics, async processing |
 | 15 | `add-ci-and-docker-polish` | Planned | CI workflow, Docker polish, production-oriented docs |
@@ -120,6 +120,8 @@ Included:
 - flag toggle and edit forms
 - audit log read model
 - targeting rule management for flag environment configurations
+- segment list/detail and segment condition management
+- segment selection in flag targeting workflows
 
 Exit criteria:
 
@@ -131,10 +133,12 @@ Exit criteria:
 | Phase | Theme | Includes |
 | --- | --- | --- |
 | v0.2 | Rollouts and audit | deterministic percentage rollouts, audit logs |
-| v0.3 | Targeting | attribute rules, operators, ordered rules, segments |
+| v0.3 | Targeting | attribute rules, operators, ordered rules, reusable segments |
 | v0.4 | Performance and realtime | Redis cache, cache invalidation, WebSockets |
 | v0.5 | SDK and analytics | JavaScript SDK, evaluation events, charts |
 | v1.0 | Portfolio polish | CI/CD, Docker polish, OpenAPI docs, screenshots, ADRs |
+
+Current performance step: `add-redis-cache` adds environment snapshot caching for SDK evaluation. The next likely change is `add-realtime-updates`, using the same environment-level mutation boundaries to notify connected dashboard or SDK clients.
 
 ## Change Sizing Rule
 

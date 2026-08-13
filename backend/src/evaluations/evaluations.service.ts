@@ -1,87 +1,71 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
-import { FeatureFlag } from "../feature-flags/feature-flag.entity";
-import { TargetingRule } from "../targeting-rules/targeting-rule.entity";
+import {
+  CachedEvaluationFlag,
+  CachedEvaluationFlagConfig,
+  CachedEvaluationSegment,
+  CachedEvaluationTargetingRule
+} from "../common/cache/evaluation-cache-snapshot";
+import { matchesSegment } from "../segments/segment-matcher";
+import { TargetingRuleSource } from "../targeting-rules/targeting-rule-source.enum";
 import { findMatchingTargetingRule } from "../targeting-rules/targeting-rule-matcher";
+import type { TargetingComparisonValue } from "../targeting-rules/targeting-rule-comparison-value";
+import type { TargetingRuleOperator } from "../targeting-rules/targeting-rule-operator.enum";
 import { SdkEvaluationRequest } from "./dto/evaluation-request.dto";
 import {
   AllEvaluationsResponse,
   EvaluationEnvironmentResponse,
+  EvaluationSegmentResponse,
   EvaluationTargetingRuleResponse,
   EvaluationReason,
   SingleEvaluationResponse
 } from "./dto/evaluation-response.dto";
+import { EvaluationSnapshotLoader } from "./evaluation-snapshot.loader";
 import { getPercentageRolloutBucket } from "./percentage-rollout";
 import { SdkEvaluationContext } from "./sdk-evaluation-context";
 
+type DirectAttributeRule = CachedEvaluationTargetingRule & {
+  attribute: string;
+  comparisonValue: TargetingComparisonValue;
+  operator: TargetingRuleOperator;
+  source: TargetingRuleSource.Attribute;
+};
+
 @Injectable()
 export class EvaluationsService {
-  constructor(
-    @InjectRepository(EnvironmentFlagConfig)
-    private readonly environmentFlagConfigsRepository: Repository<EnvironmentFlagConfig>,
-    @InjectRepository(FeatureFlag)
-    private readonly featureFlagsRepository: Repository<FeatureFlag>
-  ) {}
+  constructor(private readonly evaluationSnapshotLoader: EvaluationSnapshotLoader) {}
 
   async evaluateOne(
     context: SdkEvaluationContext,
     flagKey: string,
     evaluationContext: SdkEvaluationRequest = {}
   ): Promise<SingleEvaluationResponse> {
-    const featureFlag = await this.featureFlagsRepository.findOne({
-      where: {
-        key: flagKey,
-        projectId: context.environment.projectId
-      }
-    });
+    const snapshot = await this.evaluationSnapshotLoader.getEnvironmentSnapshot(context);
+    const featureFlag = snapshot.flags.find((flag) => flag.key === flagKey);
 
     if (!featureFlag) {
       return this.toSingleResponse(context, flagKey, false, "FLAG_NOT_FOUND");
     }
 
-    const config = await this.environmentFlagConfigsRepository.findOne({
-      relations: { targetingRules: true },
-      where: {
-        environmentId: context.environment.id,
-        featureFlagId: featureFlag.id
-      }
-    });
-
-    if (!config) {
+    if (!featureFlag.config) {
       return this.toSingleResponse(context, featureFlag.key, false, "CONFIG_NOT_FOUND");
     }
 
-    const evaluated = this.evaluateConfig(context, featureFlag.key, config, evaluationContext);
+    const evaluated = this.evaluateFlag(context, { ...featureFlag, config: featureFlag.config }, evaluationContext);
 
-    return this.toSingleResponse(context, featureFlag.key, evaluated.value, evaluated.reason, evaluated.targetingRule);
+    return this.toSingleResponse(context, featureFlag.key, evaluated.value, evaluated.reason, evaluated.targetingRule, evaluated.segment);
   }
 
   async evaluateAll(
     context: SdkEvaluationContext,
     evaluationContext: SdkEvaluationRequest = {}
   ): Promise<AllEvaluationsResponse> {
-    const featureFlags = await this.featureFlagsRepository
-      .createQueryBuilder("featureFlag")
-      .leftJoinAndSelect(
-        "featureFlag.environmentConfigs",
-        "environmentConfig",
-        "environmentConfig.environment_id = :environmentId",
-        { environmentId: context.environment.id }
-      )
-      .leftJoinAndSelect("environmentConfig.targetingRules", "targetingRule")
-      .where("featureFlag.project_id = :projectId", { projectId: context.environment.projectId })
-      .orderBy("featureFlag.key", "ASC")
-      .addOrderBy("targetingRule.sort_order", "ASC")
-      .getMany();
+    const snapshot = await this.evaluationSnapshotLoader.getEnvironmentSnapshot(context);
     const flags: Record<string, boolean> = {};
     const reasons: AllEvaluationsResponse["reasons"] = {};
 
-    featureFlags.forEach((featureFlag) => {
-      const config = featureFlag.environmentConfigs?.[0];
-      const evaluated = config
-        ? this.evaluateConfig(context, featureFlag.key, config, evaluationContext)
+    snapshot.flags.forEach((featureFlag) => {
+      const evaluated = featureFlag.config
+        ? this.evaluateFlag(context, { ...featureFlag, config: featureFlag.config }, evaluationContext)
         : { reason: "CONFIG_NOT_FOUND" as const, value: false };
 
       flags[featureFlag.key] = evaluated.value;
@@ -96,17 +80,34 @@ export class EvaluationsService {
     };
   }
 
-  private evaluateConfig(
+  private evaluateFlag(
     context: SdkEvaluationContext,
-    flagKey: string,
-    config: EnvironmentFlagConfig,
+    flag: CachedEvaluationFlag & { config: CachedEvaluationFlagConfig },
     evaluationContext: SdkEvaluationRequest
-  ): { reason: EvaluationReason; targetingRule?: EvaluationTargetingRuleResponse; value: boolean } {
+  ): {
+    reason: EvaluationReason;
+    segment?: EvaluationSegmentResponse;
+    targetingRule?: EvaluationTargetingRuleResponse;
+    value: boolean;
+  } {
+    const config = flag.config;
+
     if (!config.enabled) {
       return { reason: "DISABLED", value: false };
     }
 
-    const targetingRule = findMatchingTargetingRule(this.getOrderedTargetingRules(config), evaluationContext);
+    const segmentRule = this.getSegmentTargetingRules(flag).find((rule) => rule.segment && matchesSegment(rule.segment, evaluationContext));
+
+    if (segmentRule) {
+      return {
+        reason: "SEGMENT_TARGETING_MATCH",
+        segment: segmentRule.segment ? this.toSegmentResponse(segmentRule.segment) : undefined,
+        targetingRule: this.toTargetingRuleResponse(segmentRule),
+        value: segmentRule.resultValue
+      };
+    }
+
+    const targetingRule = findMatchingTargetingRule(this.getAttributeTargetingRules(flag), evaluationContext);
 
     if (targetingRule) {
       return {
@@ -132,7 +133,7 @@ export class EvaluationsService {
       return { reason: "ROLLOUT_CONTEXT_MISSING", value: false };
     }
 
-    const bucket = getPercentageRolloutBucket(context.environment.id, flagKey, userId);
+    const bucket = getPercentageRolloutBucket(context.environment.id, flag.key, userId);
 
     if (bucket >= rolloutPercentage) {
       return { reason: "PERCENTAGE_ROLLOUT", value: false };
@@ -141,8 +142,23 @@ export class EvaluationsService {
     return { reason: "PERCENTAGE_ROLLOUT", value: config.value };
   }
 
-  private getOrderedTargetingRules(config: EnvironmentFlagConfig): TargetingRule[] {
-    return [...(config.targetingRules ?? [])].sort((first, second) => first.sortOrder - second.sortOrder);
+  private getOrderedTargetingRules(flag: CachedEvaluationFlag): CachedEvaluationTargetingRule[] {
+    return [...flag.targetingRules].sort((first, second) => first.sortOrder - second.sortOrder);
+  }
+
+  private getSegmentTargetingRules(flag: CachedEvaluationFlag): CachedEvaluationTargetingRule[] {
+    return this.getOrderedTargetingRules(flag).filter((rule) => rule.source === TargetingRuleSource.Segment && rule.segment);
+  }
+
+  private getAttributeTargetingRules(flag: CachedEvaluationFlag): DirectAttributeRule[] {
+    return this.getOrderedTargetingRules(flag).filter((rule): rule is DirectAttributeRule => {
+      return (
+        rule.source === TargetingRuleSource.Attribute &&
+        typeof rule.attribute === "string" &&
+        rule.operator !== null &&
+        rule.comparisonValue !== null
+      );
+    });
   }
 
   private toEnvironmentResponse(context: SdkEvaluationContext): EvaluationEnvironmentResponse {
@@ -159,23 +175,42 @@ export class EvaluationsService {
     key: string,
     value: boolean,
     reason: EvaluationReason,
-    targetingRule?: EvaluationTargetingRuleResponse
+    targetingRule?: EvaluationTargetingRuleResponse,
+    segment?: EvaluationSegmentResponse
   ): SingleEvaluationResponse {
     return {
       environment: this.toEnvironmentResponse(context),
       evaluatedAt: new Date(),
       key,
       reason,
+      segment,
       targetingRule,
       value
     };
   }
 
-  private toTargetingRuleResponse(rule: TargetingRule): EvaluationTargetingRuleResponse {
-    return {
-      attribute: rule.attribute,
+  private toTargetingRuleResponse(rule: CachedEvaluationTargetingRule): EvaluationTargetingRuleResponse {
+    const response: EvaluationTargetingRuleResponse = {
       id: rule.id,
-      operator: rule.operator
+      source: rule.source
+    };
+
+    if (rule.attribute) {
+      response.attribute = rule.attribute;
+    }
+
+    if (rule.operator) {
+      response.operator = rule.operator;
+    }
+
+    return response;
+  }
+
+  private toSegmentResponse(segment: CachedEvaluationSegment): EvaluationSegmentResponse {
+    return {
+      id: segment.id,
+      key: segment.key,
+      name: segment.name
     };
   }
 }

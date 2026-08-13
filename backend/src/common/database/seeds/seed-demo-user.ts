@@ -16,8 +16,12 @@ import { Organization } from "../../../organizations/organization.entity";
 import { Project } from "../../../projects/project.entity";
 import { defaultEnvironments } from "../../../projects/projects.service";
 import { SdkKey } from "../../../sdk-keys/sdk-key.entity";
+import { SegmentCondition } from "../../../segments/segment-condition.entity";
+import { SegmentMatchMode } from "../../../segments/segment-match-mode.enum";
+import { Segment } from "../../../segments/segment.entity";
 import { TargetingRule } from "../../../targeting-rules/targeting-rule.entity";
 import { TargetingRuleOperator } from "../../../targeting-rules/targeting-rule-operator.enum";
+import { TargetingRuleSource } from "../../../targeting-rules/targeting-rule-source.enum";
 import { User } from "../../../users/user.entity";
 import { UserRole } from "../../../users/user-role.enum";
 
@@ -40,6 +44,43 @@ const demoSdkKey = {
   secret: "ff_development_sk_local_demo_key"
 } as const;
 
+const demoSegments = [
+  {
+    conditions: [
+      {
+        attribute: "country",
+        comparisonValue: "IT",
+        operator: TargetingRuleOperator.Equals
+      },
+      {
+        attribute: "plan",
+        comparisonValue: "PREMIUM",
+        operator: TargetingRuleOperator.Equals
+      }
+    ],
+    description: "Premium customers in Italy for checkout experiments.",
+    matchMode: SegmentMatchMode.MatchAll,
+    name: "Premium Italian Users"
+  },
+  {
+    conditions: [
+      {
+        attribute: "email",
+        comparisonValue: "@company.com",
+        operator: TargetingRuleOperator.EndsWith
+      },
+      {
+        attribute: "role",
+        comparisonValue: "STAFF",
+        operator: TargetingRuleOperator.Equals
+      }
+    ],
+    description: "Internal employees and staff accounts for early access.",
+    matchMode: SegmentMatchMode.MatchAny,
+    name: "Internal Employees"
+  }
+] as const;
+
 const demoFlags = [
   {
     description: "Controls access to the redesigned checkout experience.",
@@ -49,15 +90,22 @@ const demoFlags = [
         rolloutPercentage: 25,
         targetingRules: [
           {
+            resultValue: true,
+            segmentName: "Premium Italian Users",
+            source: TargetingRuleSource.Segment
+          },
+          {
             attribute: "email",
             comparisonValue: "@company.com",
             operator: TargetingRuleOperator.EndsWith,
+            source: TargetingRuleSource.Attribute,
             resultValue: true
           },
           {
             attribute: "country",
             comparisonValue: "IT",
             operator: TargetingRuleOperator.Equals,
+            source: TargetingRuleSource.Attribute,
             resultValue: true
           }
         ],
@@ -79,6 +127,7 @@ const demoFlags = [
             attribute: "plan",
             comparisonValue: "PREMIUM",
             operator: TargetingRuleOperator.Equals,
+            source: TargetingRuleSource.Attribute,
             resultValue: true
           }
         ],
@@ -100,6 +149,8 @@ const seedDemoUser = async (): Promise<void> => {
   const auditLogs = dataSource.getRepository(AuditLog);
   const organizations = dataSource.getRepository(Organization);
   const projects = dataSource.getRepository(Project);
+  const segments = dataSource.getRepository(Segment);
+  const segmentConditions = dataSource.getRepository(SegmentCondition);
   const sdkKeys = dataSource.getRepository(SdkKey);
   const targetingRules = dataSource.getRepository(TargetingRule);
   const users = dataSource.getRepository(User);
@@ -178,6 +229,48 @@ const seedDemoUser = async (): Promise<void> => {
     savedEnvironments.push(existingEnvironment);
   }
 
+  const savedSegmentsByName = new Map<string, Segment>();
+
+  for (const demoSegment of demoSegments) {
+    const key = createKeyFromName(demoSegment.name);
+    let existingSegment = await segments.findOne({ where: { key, projectId: savedProject.id } });
+
+    if (!existingSegment) {
+      existingSegment = segments.create({
+        key,
+        projectId: savedProject.id
+      });
+    }
+
+    existingSegment.description = demoSegment.description;
+    existingSegment.matchMode = demoSegment.matchMode;
+    existingSegment.name = demoSegment.name;
+    const savedSegment = await segments.save(existingSegment);
+    savedSegmentsByName.set(demoSegment.name, savedSegment);
+
+    for (const [index, demoCondition] of demoSegment.conditions.entries()) {
+      let existingCondition = await segmentConditions.findOne({
+        where: {
+          attribute: demoCondition.attribute,
+          operator: demoCondition.operator,
+          segmentId: savedSegment.id
+        }
+      });
+
+      if (!existingCondition) {
+        existingCondition = segmentConditions.create({
+          attribute: demoCondition.attribute,
+          operator: demoCondition.operator,
+          segmentId: savedSegment.id
+        });
+      }
+
+      existingCondition.comparisonValue = demoCondition.comparisonValue;
+      existingCondition.sortOrder = index + 1;
+      await segmentConditions.save(existingCondition);
+    }
+  }
+
   for (const demoFlag of demoFlags) {
     const key = createKeyFromName(demoFlag.name);
     let existingFlag = await featureFlags.findOne({ where: { key, projectId: savedProject.id } });
@@ -222,25 +315,57 @@ const seedDemoUser = async (): Promise<void> => {
 
       if ("targetingRules" in desiredConfig) {
         for (const [index, desiredRule] of desiredConfig.targetingRules.entries()) {
-          let existingRule = await targetingRules.findOne({
-            where: {
-              attribute: desiredRule.attribute,
-              environmentFlagConfigId: savedConfig.id,
-              operator: desiredRule.operator
-            }
-          });
+          const source = desiredRule.source ?? TargetingRuleSource.Attribute;
+          const desiredSegment =
+            source === TargetingRuleSource.Segment && "segmentName" in desiredRule
+              ? savedSegmentsByName.get(desiredRule.segmentName)
+              : null;
+          let existingRule =
+            source === TargetingRuleSource.Segment && desiredSegment
+              ? await targetingRules.findOne({
+                  where: {
+                    environmentFlagConfigId: savedConfig.id,
+                    segmentId: desiredSegment.id,
+                    source
+                  }
+                })
+              : "attribute" in desiredRule && "operator" in desiredRule
+                ? await targetingRules.findOne({
+                    where: {
+                      attribute: desiredRule.attribute,
+                      environmentFlagConfigId: savedConfig.id,
+                      operator: desiredRule.operator,
+                      source
+                    }
+                  })
+                : null;
 
           if (!existingRule) {
             existingRule = targetingRules.create({
-              attribute: desiredRule.attribute,
               environmentFlagConfigId: savedConfig.id,
-              operator: desiredRule.operator
+              source
             });
           }
 
-          existingRule.comparisonValue = desiredRule.comparisonValue;
+          if (source === TargetingRuleSource.Segment) {
+            if (!desiredSegment) {
+              continue;
+            }
+
+            existingRule.attribute = null;
+            existingRule.comparisonValue = null;
+            existingRule.operator = null;
+            existingRule.segmentId = desiredSegment.id;
+          } else if ("attribute" in desiredRule && "operator" in desiredRule && "comparisonValue" in desiredRule) {
+            existingRule.attribute = desiredRule.attribute;
+            existingRule.comparisonValue = desiredRule.comparisonValue;
+            existingRule.operator = desiredRule.operator;
+            existingRule.segmentId = null;
+          }
+
           existingRule.resultValue = desiredRule.resultValue;
           existingRule.sortOrder = index + 1;
+          existingRule.source = source;
           await targetingRules.save(existingRule);
         }
       }
@@ -332,6 +457,7 @@ const seedDemoUser = async (): Promise<void> => {
   console.log(`Seeded demo user: ${demoUser.email} / ${demoUser.password}`);
   console.log(`Seeded demo project: ${demoProject.name}`);
   console.log(`Seeded demo feature flags: ${demoFlags.map((flag) => flag.name).join(", ")}`);
+  console.log(`Seeded demo segments: ${demoSegments.map((segment) => segment.name).join(", ")}`);
   console.log("Seeded demo targeting rules for development flags");
   console.log(`Seeded demo SDK key (${demoSdkKey.environmentKey}): ${demoSdkKey.secret}`);
 };

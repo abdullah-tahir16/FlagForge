@@ -16,24 +16,37 @@ export const targetingRuleOperators = [
 export type TargetingRuleOperator = (typeof targetingRuleOperators)[number];
 export type TargetingPrimitive = boolean | number | string | null;
 export type TargetingComparisonValue = TargetingPrimitive | TargetingPrimitive[];
+export const targetingRuleSources = ["ATTRIBUTE", "SEGMENT"] as const;
+export type TargetingRuleSource = (typeof targetingRuleSources)[number];
+
+export interface TargetingRuleSegment {
+  id: string;
+  key: string;
+  name: string;
+}
 
 export interface TargetingRule {
-  attribute: string;
-  comparisonValue: TargetingComparisonValue;
+  attribute: string | null;
+  comparisonValue: TargetingComparisonValue | null;
   createdAt: string;
   environmentFlagConfigId: string;
   id: string;
-  operator: TargetingRuleOperator;
+  operator: TargetingRuleOperator | null;
   resultValue: boolean;
+  segment: TargetingRuleSegment | null;
+  segmentId: string | null;
   sortOrder: number;
+  source: TargetingRuleSource;
   updatedAt: string;
 }
 
 export interface CreateTargetingRuleInput {
-  attribute: string;
-  comparisonValue: TargetingComparisonValue;
-  operator: TargetingRuleOperator;
+  attribute?: string;
+  comparisonValue?: TargetingComparisonValue;
+  operator?: TargetingRuleOperator;
   resultValue: boolean;
+  segmentId?: string;
+  source?: TargetingRuleSource;
 }
 
 export type UpdateTargetingRuleInput = Partial<CreateTargetingRuleInput>;

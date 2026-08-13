@@ -5,12 +5,13 @@ import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { SdkKeysModule } from "../sdk-keys/sdk-keys.module";
 import { TargetingRule } from "../targeting-rules/targeting-rule.entity";
 import { EvaluationsController } from "./evaluations.controller";
+import { EvaluationSnapshotLoader } from "./evaluation-snapshot.loader";
 import { EvaluationsService } from "./evaluations.service";
 import { SdkAuthService } from "./sdk-auth.service";
 
 @Module({
   controllers: [EvaluationsController],
   imports: [SdkKeysModule, TypeOrmModule.forFeature([EnvironmentFlagConfig, FeatureFlag, TargetingRule])],
-  providers: [EvaluationsService, SdkAuthService]
+  providers: [EvaluationsService, EvaluationSnapshotLoader, SdkAuthService]
 })
 export class EvaluationsModule {}

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { targetingRuleOperators } from "../../../core/types/TargetingRules";
+import { targetingRuleOperators, targetingRuleSources } from "../../../core/types/TargetingRules";
 import type { TargetingRuleOperator } from "../../../core/types/TargetingRules";
 
 export const numericTargetingRuleOperators: TargetingRuleOperator[] = [
@@ -31,19 +31,71 @@ export const targetingRuleOperatorOptions = targetingRuleOperators.map((operator
   value: operator
 }));
 
+export const targetingRuleSourceOptions = [
+  { label: "Attribute", value: "ATTRIBUTE" },
+  { label: "Segment", value: "SEGMENT" }
+];
+
 export const targetingRuleFormSchema = z
   .object({
     attribute: z
       .string()
       .trim()
-      .min(1, "Attribute is required")
       .max(80, "Attribute must be 80 characters or less")
-      .regex(/^[A-Za-z][A-Za-z0-9_.-]*$/, "Use letters, numbers, dots, dashes, or underscores"),
-    comparisonValue: z.string().trim().min(1, "Comparison value is required"),
-    operator: z.enum(targetingRuleOperators),
-    resultValue: z.enum(["true", "false"])
+      .optional(),
+    comparisonValue: z.string().trim().optional(),
+    operator: z.enum(targetingRuleOperators).optional(),
+    resultValue: z.enum(["true", "false"]),
+    segmentId: z.string().optional(),
+    source: z.enum(targetingRuleSources)
   })
   .superRefine((values, context) => {
+    if (values.source === "SEGMENT") {
+      if (!values.segmentId) {
+        context.addIssue({
+          code: "custom",
+          message: "Segment is required",
+          path: ["segmentId"]
+        });
+      }
+
+      return;
+    }
+
+    if (!values.attribute) {
+      context.addIssue({
+        code: "custom",
+        message: "Attribute is required",
+        path: ["attribute"]
+      });
+    } else if (!/^[A-Za-z][A-Za-z0-9_.-]*$/.test(values.attribute)) {
+      context.addIssue({
+        code: "custom",
+        message: "Use letters, numbers, dots, dashes, or underscores",
+        path: ["attribute"]
+      });
+    }
+
+    if (!values.operator) {
+      context.addIssue({
+        code: "custom",
+        message: "Operator is required",
+        path: ["operator"]
+      });
+    }
+
+    if (!values.comparisonValue) {
+      context.addIssue({
+        code: "custom",
+        message: "Comparison value is required",
+        path: ["comparisonValue"]
+      });
+    }
+
+    if (!values.operator || !values.comparisonValue) {
+      return;
+    }
+
     if (numericTargetingRuleOperators.includes(values.operator) && Number.isNaN(Number(values.comparisonValue))) {
       context.addIssue({
         code: "custom",

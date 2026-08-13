@@ -16,6 +16,6 @@ export const useEnvironmentUseCase = (projectId?: string) => {
     isUpdatingEnvironment: updateEnvironmentMutation.isPending,
     updateEnvironment,
     updateEnvironmentError: updateEnvironmentMutation.error,
-    updatingEnvironmentId: updateEnvironmentMutation.variables?.environmentId
+    updatingEnvironmentId: updateEnvironmentMutation.isPending ? updateEnvironmentMutation.variables?.environmentId : undefined
   };
 };

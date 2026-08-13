@@ -80,6 +80,10 @@ const createService = () => {
   const auditService = {
     record: jest.fn(async (..._args: unknown[]) => undefined)
   };
+  const evaluationCacheService = {
+    deleteEnvironmentSnapshot: jest.fn(async () => undefined),
+    deleteEnvironmentSnapshots: jest.fn(async () => undefined)
+  };
 
   const withRelations = (featureFlag: FeatureFlag): FeatureFlag => {
     const environmentConfigs = Array.from(configs.values())
@@ -143,6 +147,7 @@ const createService = () => {
       Array.from(configs.values())
         .filter((config) => config.featureFlagId === featureFlag.id)
         .forEach((config) => configs.delete(config.id));
+      Object.assign(featureFlag, { id: undefined });
     }),
     save: jest.fn(async (featureFlag: FeatureFlag) => {
       const savedFlag = {
@@ -215,6 +220,7 @@ const createService = () => {
     dataSource as never,
     projectsService as unknown as ProjectsService,
     auditService as unknown as AuditService,
+    evaluationCacheService as never,
     environmentsRepository as never,
     configsRepository as never,
     featureFlagsRepository as never
@@ -225,6 +231,7 @@ const createService = () => {
     configsRepository,
     auditService,
     dataSource,
+    evaluationCacheService,
     environments,
     featureFlags,
     featureFlagsRepository,
@@ -235,7 +242,7 @@ const createService = () => {
 
 describe("FeatureFlagsService", () => {
   it("creates a project-scoped boolean feature flag with default environment configs", async () => {
-    const { auditService, configs, environments, service } = createService();
+    const { auditService, configs, environments, evaluationCacheService, service } = createService();
     environments.set("environment-2", createEnvironment({ id: "environment-2", key: "staging", sortOrder: 20 }));
     environments.set("environment-1", createEnvironment());
 
@@ -267,6 +274,7 @@ describe("FeatureFlagsService", () => {
       }),
       undefined
     );
+    expect(evaluationCacheService.deleteEnvironmentSnapshots).toHaveBeenCalledWith(["environment-1", "environment-2"]);
   });
 
   it("rejects duplicate keys and uses a transaction for atomic config creation", async () => {
@@ -285,7 +293,8 @@ describe("FeatureFlagsService", () => {
   });
 
   it("lists, reads, updates, and deletes project feature flags", async () => {
-    const { auditService, configs, environments, featureFlags, featureFlagsRepository, service } = createService();
+    const { auditService, configs, environments, evaluationCacheService, featureFlags, featureFlagsRepository, service } =
+      createService();
     environments.set("environment-1", createEnvironment());
     featureFlags.set("flag-1", createFeatureFlag());
     configs.set("config-1", createConfig());
@@ -310,24 +319,28 @@ describe("FeatureFlagsService", () => {
       }),
       undefined
     );
+    expect(evaluationCacheService.deleteEnvironmentSnapshots).toHaveBeenCalledWith(["environment-1"]);
 
     await service.remove(owner, "project-1", "flag-1");
 
-    expect(featureFlagsRepository.remove).toHaveBeenCalledWith(expect.objectContaining({ id: "flag-1" }));
+    expect(featureFlagsRepository.remove).toHaveBeenCalledTimes(1);
     expect(featureFlags.has("flag-1")).toBe(false);
     expect(configs.has("config-1")).toBe(false);
     expect(auditService.record).toHaveBeenCalledWith(
       owner,
       expect.objectContaining({
         action: AuditAction.FeatureFlagDeleted,
-        oldValue: expect.objectContaining({ key: "new-checkout", name: "Renamed" })
+        oldValue: expect.objectContaining({ key: "new-checkout", name: "Renamed" }),
+        resourceId: "flag-1"
       }),
       undefined
     );
+    expect(evaluationCacheService.deleteEnvironmentSnapshots).toHaveBeenLastCalledWith(["environment-1"]);
   });
 
   it("updates environment configuration and rejects ownership mismatches", async () => {
-    const { auditService, configs, environments, featureFlags, projectsService, service } = createService();
+    const { auditService, configs, environments, evaluationCacheService, featureFlags, projectsService, service } =
+      createService();
     environments.set("environment-1", createEnvironment());
     featureFlags.set("flag-1", createFeatureFlag());
     configs.set("config-1", createConfig());
@@ -350,6 +363,7 @@ describe("FeatureFlagsService", () => {
       }),
       undefined
     );
+    expect(evaluationCacheService.deleteEnvironmentSnapshot).toHaveBeenCalledWith("environment-1");
 
     await expect(
       service.updateEnvironmentConfig(owner, "project-1", "flag-1", "missing-environment", { enabled: false })

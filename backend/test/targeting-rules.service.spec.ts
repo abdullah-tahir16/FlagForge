@@ -9,6 +9,8 @@ import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
 import { ProjectsService } from "../src/projects/projects.service";
 import { TargetingRule } from "../src/targeting-rules/targeting-rule.entity";
 import { TargetingRuleOperator } from "../src/targeting-rules/targeting-rule-operator.enum";
+import { TargetingRuleSource } from "../src/targeting-rules/targeting-rule-source.enum";
+import { Segment } from "../src/segments/segment.entity";
 import { TargetingRulesService } from "../src/targeting-rules/targeting-rules.service";
 import { UserRole } from "../src/users/user-role.enum";
 
@@ -68,13 +70,16 @@ const createRule = (overrides: Partial<TargetingRule> = {}): TargetingRule =>
     operator: TargetingRuleOperator.Equals,
     resultValue: true,
     sortOrder: 1,
+    source: TargetingRuleSource.Attribute,
     updatedAt: now,
     ...overrides
   }) as TargetingRule;
 
 const createService = () => {
   const rules = new Map<string, TargetingRule>();
+  const segments = new Map<string, Segment>();
   const auditService = { record: jest.fn(async () => undefined) };
+  const evaluationCacheService = { deleteEnvironmentSnapshot: jest.fn(async () => undefined) };
   const projectsService = { findProjectForUser: jest.fn(async () => ({ id: "project-1" })) };
   const environmentsRepository = {
     findOne: jest.fn(async ({ where }: { where: Partial<Environment> }) =>
@@ -116,6 +121,7 @@ const createService = () => {
     ),
     remove: jest.fn(async (rule: TargetingRule) => {
       rules.delete(rule.id);
+      Object.assign(rule, { id: undefined });
     }),
     save: jest.fn(async (rule: TargetingRule) => {
       const savedRule = {
@@ -135,6 +141,11 @@ const createService = () => {
       }
     })
   };
+  const segmentsRepository = {
+    findOne: jest.fn(async ({ where }: { where: Partial<Segment> }) =>
+      Array.from(segments.values()).find((segment) => segment.id === where.id && segment.projectId === where.projectId) ?? null
+    )
+  };
   const dataSource = {
     transaction: jest.fn((callback: (manager: { getRepository: () => typeof rulesRepository }) => Promise<unknown>) =>
       callback({ getRepository: () => rulesRepository })
@@ -142,20 +153,22 @@ const createService = () => {
   };
   const service = new TargetingRulesService(
     auditService as unknown as AuditService,
+    evaluationCacheService as never,
     dataSource as never,
     projectsService as unknown as ProjectsService,
     environmentsRepository as never,
     configsRepository as never,
     featureFlagsRepository as never,
+    segmentsRepository as never,
     rulesRepository as never
   );
 
-  return { auditService, dataSource, projectsService, rules, rulesRepository, service };
+  return { auditService, dataSource, evaluationCacheService, projectsService, rules, rulesRepository, segments, service };
 };
 
 describe("TargetingRulesService", () => {
   it("lists and creates ordered rules with audit events", async () => {
-    const { auditService, rules, service } = createService();
+    const { auditService, evaluationCacheService, rules, service } = createService();
     rules.set("rule-1", createRule());
 
     await expect(service.findAll(owner, "project-1", "flag-1", "environment-1")).resolves.toEqual([
@@ -180,10 +193,11 @@ describe("TargetingRulesService", () => {
       }),
       undefined
     );
+    expect(evaluationCacheService.deleteEnvironmentSnapshot).toHaveBeenCalledWith("environment-1");
   });
 
   it("updates, deletes, and reorders rules with validation", async () => {
-    const { auditService, rules, service } = createService();
+    const { auditService, evaluationCacheService, rules, service } = createService();
     rules.set("rule-1", createRule({ id: "rule-1", sortOrder: 1 }));
     rules.set("rule-2", createRule({ attribute: "plan", id: "rule-2", sortOrder: 2 }));
 
@@ -200,6 +214,7 @@ describe("TargetingRulesService", () => {
         operator: TargetingRuleOperator.In
       })
     ).resolves.toMatchObject({ comparisonValue: ["FREE", "PREMIUM"], operator: TargetingRuleOperator.In });
+    expect(evaluationCacheService.deleteEnvironmentSnapshot).toHaveBeenCalledWith("environment-1");
 
     await expect(
       service.reorder(owner, "project-1", "flag-1", "environment-1", { ruleIds: ["rule-2"] })
@@ -208,15 +223,20 @@ describe("TargetingRulesService", () => {
     await expect(
       service.reorder(owner, "project-1", "flag-1", "environment-1", { ruleIds: ["rule-2", "rule-1"] })
     ).resolves.toEqual([expect.objectContaining({ id: "rule-2", sortOrder: 1 }), expect.objectContaining({ id: "rule-1", sortOrder: 2 })]);
+    expect(evaluationCacheService.deleteEnvironmentSnapshot).toHaveBeenCalledWith("environment-1");
 
     await service.remove(owner, "project-1", "flag-1", "environment-1", "rule-2");
     expect(rules.has("rule-2")).toBe(false);
     expect(rules.get("rule-1")).toMatchObject({ sortOrder: 1 });
     expect(auditService.record).toHaveBeenCalledWith(
       owner,
-      expect.objectContaining({ action: AuditAction.TargetingRuleDeleted }),
+      expect.objectContaining({
+        action: AuditAction.TargetingRuleDeleted,
+        resourceId: "rule-2"
+      }),
       undefined
     );
+    expect(evaluationCacheService.deleteEnvironmentSnapshot).toHaveBeenLastCalledWith("environment-1");
   });
 
   it("rejects missing environment, flag, config, and rule access", async () => {
@@ -225,5 +245,32 @@ describe("TargetingRulesService", () => {
     await expect(service.update(owner, "project-1", "flag-1", "environment-1", "missing", {})).rejects.toBeInstanceOf(
       NotFoundException
     );
+  });
+
+  it("creates and updates segment-source rules with safe segment metadata", async () => {
+    const { segments, service } = createService();
+    segments.set("segment-1", {
+      createdAt: now,
+      description: null,
+      id: "segment-1",
+      key: "premium-users",
+      name: "Premium Users",
+      projectId: "project-1",
+      updatedAt: now
+    } as Segment);
+
+    const created = await service.create(owner, "project-1", "flag-1", "environment-1", {
+      resultValue: true,
+      segmentId: "segment-1",
+      source: TargetingRuleSource.Segment
+    });
+
+    expect(created).toMatchObject({
+      attribute: null,
+      comparisonValue: null,
+      segment: { id: "segment-1", key: "premium-users", name: "Premium Users" },
+      segmentId: "segment-1",
+      source: TargetingRuleSource.Segment
+    });
   });
 });

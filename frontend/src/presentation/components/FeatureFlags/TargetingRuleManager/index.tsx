@@ -5,7 +5,12 @@ import type { EnvironmentFlagConfig } from "../../../../core/types/FeatureFlag";
 import type { TargetingRule } from "../../../../core/types/TargetingRules";
 import { useTargetingRulesUseCase } from "../../../../infrastructure/useCases/TargetingRules/useTargetingRulesUseCase";
 import { validateWithSchema } from "../../../hooks/Auth/fns";
-import { targetingRuleFormSchema, targetingRuleOperatorLabels, targetingRuleOperatorOptions } from "../../../hooks/TargetingRules/data";
+import {
+  targetingRuleFormSchema,
+  targetingRuleOperatorLabels,
+  targetingRuleOperatorOptions,
+  targetingRuleSourceOptions
+} from "../../../hooks/TargetingRules/data";
 import {
   formatComparisonValue,
   getTargetingRuleInitialValues,
@@ -90,43 +95,74 @@ const TargetingRuleManager = ({ config, flagId, projectId }: Props) => {
         initialValues={getTargetingRuleInitialValues(editingRule)}
         key={editingRule?.id ?? "create-targeting-rule"}
         onSubmit={editingRule ? onEditRuleSubmit : onCreateRuleSubmit}
-        render={({ handleSubmit, submitting }) => (
+        render={({ handleSubmit, submitting, values }) => (
           <Form
-            className="grid gap-3 rounded-app border border-app-border bg-app-surface-muted p-3 lg:grid-cols-[minmax(140px,1fr)_180px_minmax(160px,1fr)_140px_auto] lg:items-end"
+            className="grid gap-3 rounded-app border border-app-border bg-app-surface-muted p-3 lg:grid-cols-[150px_minmax(140px,1fr)_180px_minmax(160px,1fr)_140px_auto] lg:items-end"
             onSubmit={handleSubmit}
           >
-            <Field<string> name="attribute">
-              {({ input, meta }) => (
-                <TextInput
-                  {...input}
-                  autoComplete="off"
-                  error={meta.touched && meta.error ? meta.error : undefined}
-                  label="Attribute"
-                  placeholder="country"
-                />
-              )}
-            </Field>
-            <Field<string> name="operator">
+            <Field<string> name="source">
               {({ input, meta }) => (
                 <Select
                   {...input}
                   error={meta.touched && meta.error ? meta.error : undefined}
-                  label="Operator"
-                  options={targetingRuleOperatorOptions}
+                  label="Source"
+                  options={targetingRuleSourceOptions}
                 />
               )}
             </Field>
-            <Field<string> name="comparisonValue">
-              {({ input, meta }) => (
-                <TextInput
-                  {...input}
-                  autoComplete="off"
-                  error={meta.touched && meta.error ? meta.error : undefined}
-                  label="Value"
-                  placeholder="IT"
-                />
-              )}
-            </Field>
+            {values.source === "SEGMENT" ? (
+              <Field<string> name="segmentId">
+                {({ input, meta }) => (
+                  <Select
+                    {...input}
+                    error={meta.touched && meta.error ? meta.error : undefined}
+                    label="Segment"
+                    options={[
+                      { label: "Select segment", value: "" },
+                      ...targetingRules.segmentOptions.map((segment) => ({
+                        label: segment.name,
+                        value: segment.id
+                      }))
+                    ]}
+                  />
+                )}
+              </Field>
+            ) : (
+              <>
+                <Field<string> name="attribute">
+                  {({ input, meta }) => (
+                    <TextInput
+                      {...input}
+                      autoComplete="off"
+                      error={meta.touched && meta.error ? meta.error : undefined}
+                      label="Attribute"
+                      placeholder="country"
+                    />
+                  )}
+                </Field>
+                <Field<string> name="operator">
+                  {({ input, meta }) => (
+                    <Select
+                      {...input}
+                      error={meta.touched && meta.error ? meta.error : undefined}
+                      label="Operator"
+                      options={targetingRuleOperatorOptions}
+                    />
+                  )}
+                </Field>
+                <Field<string> name="comparisonValue">
+                  {({ input, meta }) => (
+                    <TextInput
+                      {...input}
+                      autoComplete="off"
+                      error={meta.touched && meta.error ? meta.error : undefined}
+                      label="Value"
+                      placeholder="IT"
+                    />
+                  )}
+                </Field>
+              </>
+            )}
             <Field<string> name="resultValue">
               {({ input, meta }) => (
                 <Select
@@ -216,9 +252,21 @@ const TargetingRuleManager = ({ config, flagId, projectId }: Props) => {
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="info">#{rule.sortOrder}</Badge>
-                  <Badge>{rule.attribute}</Badge>
-                  <span className="text-sm font-semibold text-app-text">{targetingRuleOperatorLabels[rule.operator]}</span>
-                  <Badge tone="primary">{formatComparisonValue(rule.comparisonValue)}</Badge>
+                  {rule.source === "SEGMENT" ? (
+                    <>
+                      <Badge tone="primary">segment</Badge>
+                      <span className="text-sm font-semibold text-app-text">{rule.segment?.name ?? "Unknown segment"}</span>
+                      {rule.segment ? <Badge>{rule.segment.key}</Badge> : null}
+                    </>
+                  ) : (
+                    <>
+                      <Badge>{rule.attribute ?? "attribute"}</Badge>
+                      <span className="text-sm font-semibold text-app-text">
+                        {rule.operator ? targetingRuleOperatorLabels[rule.operator] : "matches"}
+                      </span>
+                      <Badge tone="primary">{rule.comparisonValue === null ? "" : formatComparisonValue(rule.comparisonValue)}</Badge>
+                    </>
+                  )}
                   <Badge tone={rule.resultValue ? "success" : "neutral"}>serve {rule.resultValue ? "true" : "false"}</Badge>
                 </div>
               </div>
@@ -229,7 +277,7 @@ const TargetingRuleManager = ({ config, flagId, projectId }: Props) => {
 
       <ConfirmDialog
         confirmLabel="Delete rule"
-        description={`Delete the ${pendingDeleteRule?.attribute ?? "selected"} targeting rule. Evaluations will skip it immediately.`}
+        description={`Delete the ${pendingDeleteRule?.segment?.name ?? pendingDeleteRule?.attribute ?? "selected"} targeting rule. Evaluations will skip it immediately.`}
         isConfirming={targetingRules.isDeletingRule}
         onCancel={() => setPendingDeleteRule(null)}
         onConfirm={() => void onConfirmDeleteRule()}

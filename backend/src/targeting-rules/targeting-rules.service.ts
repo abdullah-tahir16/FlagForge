@@ -6,10 +6,12 @@ import type { AuditContext, AuditSnapshot } from "../audit/audit-context";
 import { AuditResourceType } from "../audit/audit-resource-type.enum";
 import { AuditService } from "../audit/audit.service";
 import type { AuthenticatedUser } from "../auth/authenticated-user";
+import { EvaluationCacheService } from "../common/cache/evaluation-cache.service";
 import { Environment } from "../environments/environment.entity";
 import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { ProjectsService } from "../projects/projects.service";
+import { Segment } from "../segments/segment.entity";
 import { CreateTargetingRuleDto } from "./dto/create-targeting-rule.dto";
 import { TargetingRuleResponse } from "./dto/targeting-rule-response.dto";
 import { ReorderTargetingRulesDto } from "./dto/reorder-targeting-rules.dto";
@@ -17,6 +19,7 @@ import { UpdateTargetingRuleDto } from "./dto/update-targeting-rule.dto";
 import type { TargetingComparisonValue } from "./targeting-rule-comparison-value";
 import { TargetingRule } from "./targeting-rule.entity";
 import { TargetingRuleOperator } from "./targeting-rule-operator.enum";
+import { TargetingRuleSource } from "./targeting-rule-source.enum";
 import { validateTargetingComparisonValue } from "./targeting-rule-matcher";
 
 interface ConfigContext {
@@ -25,10 +28,21 @@ interface ConfigContext {
   featureFlag: FeatureFlag;
 }
 
+interface NormalizedRuleInput {
+  attribute: string | null;
+  comparisonValue: TargetingComparisonValue | null;
+  operator: TargetingRuleOperator | null;
+  resultValue: boolean;
+  segment: Segment | null;
+  segmentId: string | null;
+  source: TargetingRuleSource;
+}
+
 @Injectable()
 export class TargetingRulesService {
   constructor(
     private readonly auditService: AuditService,
+    private readonly evaluationCacheService: EvaluationCacheService,
     private readonly dataSource: DataSource,
     private readonly projectsService: ProjectsService,
     @InjectRepository(Environment)
@@ -37,6 +51,8 @@ export class TargetingRulesService {
     private readonly environmentFlagConfigsRepository: Repository<EnvironmentFlagConfig>,
     @InjectRepository(FeatureFlag)
     private readonly featureFlagsRepository: Repository<FeatureFlag>,
+    @InjectRepository(Segment)
+    private readonly segmentsRepository: Repository<Segment>,
     @InjectRepository(TargetingRule)
     private readonly targetingRulesRepository: Repository<TargetingRule>
   ) {}
@@ -62,7 +78,7 @@ export class TargetingRulesService {
     auditContext?: AuditContext
   ): Promise<TargetingRuleResponse> {
     const { config, environment, featureFlag } = await this.findConfigContext(user, projectId, flagId, environmentId);
-    const normalized = this.normalizeRuleInput(dto);
+    const normalized = await this.normalizeRuleInput(projectId, dto);
     const sortOrder = await this.getNextSortOrder(config.id);
     const rule = await this.targetingRulesRepository.save(
       this.targetingRulesRepository.create({
@@ -86,6 +102,7 @@ export class TargetingRulesService {
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
 
     return this.toResponse(rule);
   }
@@ -103,17 +120,22 @@ export class TargetingRulesService {
     const rule = await this.findRuleForConfig(config.id, ruleId);
     const oldValue = this.changedRuleSnapshot(rule, dto);
     const nextRule = {
+      source: dto.source ?? rule.source,
       attribute: dto.attribute ?? rule.attribute,
       comparisonValue: dto.comparisonValue ?? rule.comparisonValue,
       operator: dto.operator ?? rule.operator,
+      segmentId: dto.segmentId ?? rule.segmentId,
       resultValue: dto.resultValue ?? rule.resultValue
     };
-    const normalized = this.normalizeRuleInput(nextRule);
+    const normalized = await this.normalizeRuleInput(projectId, nextRule);
 
     rule.attribute = normalized.attribute;
     rule.comparisonValue = normalized.comparisonValue;
     rule.operator = normalized.operator;
     rule.resultValue = normalized.resultValue;
+    rule.segment = normalized.segment;
+    rule.segmentId = normalized.segmentId;
+    rule.source = normalized.source;
 
     const savedRule = await this.targetingRulesRepository.save(rule);
     await this.auditService.record(
@@ -130,6 +152,7 @@ export class TargetingRulesService {
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
 
     return this.toResponse(savedRule);
   }
@@ -144,6 +167,9 @@ export class TargetingRulesService {
   ): Promise<void> {
     const { config, environment, featureFlag } = await this.findConfigContext(user, projectId, flagId, environmentId);
     const rule = await this.findRuleForConfig(config.id, ruleId);
+    const oldValue = this.ruleSnapshot(rule);
+    const resourceId = rule.id;
+    const resourceName = this.getRuleResourceName(featureFlag, environment, rule);
 
     await this.dataSource.transaction(async (manager) => {
       const rulesRepository = manager.getRepository(TargetingRule);
@@ -157,14 +183,15 @@ export class TargetingRulesService {
         action: AuditAction.TargetingRuleDeleted,
         environmentId,
         newValue: null,
-        oldValue: this.ruleSnapshot(rule),
+        oldValue,
         projectId,
-        resourceId: rule.id,
-        resourceName: this.getRuleResourceName(featureFlag, environment, rule),
+        resourceId,
+        resourceName,
         resourceType: AuditResourceType.TargetingRule
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
   }
 
   async reorder(
@@ -188,6 +215,7 @@ export class TargetingRulesService {
       }
 
       return rulesRepository.find({
+        relations: { segment: true },
         order: { sortOrder: "ASC" },
         where: { environmentFlagConfigId: config.id }
       });
@@ -207,6 +235,7 @@ export class TargetingRulesService {
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
 
     return reorderedRules.map((rule) => this.toResponse(rule));
   }
@@ -257,6 +286,7 @@ export class TargetingRulesService {
 
   private async findRuleForConfig(environmentFlagConfigId: string, ruleId: string): Promise<TargetingRule> {
     const rule = await this.targetingRulesRepository.findOne({
+      relations: { segment: true },
       where: { environmentFlagConfigId, id: ruleId }
     });
 
@@ -269,6 +299,7 @@ export class TargetingRulesService {
 
   private findRulesForConfig(environmentFlagConfigId: string): Promise<TargetingRule[]> {
     return this.targetingRulesRepository.find({
+      relations: { segment: true },
       order: { sortOrder: "ASC" },
       where: { environmentFlagConfigId }
     });
@@ -285,15 +316,52 @@ export class TargetingRulesService {
   }
 
   private getRuleResourceName(featureFlag: FeatureFlag, environment: Environment, rule: TargetingRule): string {
+    if (rule.source === TargetingRuleSource.Segment) {
+      return `${featureFlag.name} segment ${rule.segment?.name ?? rule.segmentId ?? "unknown"} in ${environment.name}`;
+    }
+
     return `${featureFlag.name} ${rule.attribute} ${rule.operator} in ${environment.name}`;
   }
 
-  private normalizeRuleInput(input: {
-    attribute: string;
-    comparisonValue: TargetingComparisonValue;
-    operator: TargetingRuleOperator;
-    resultValue: boolean;
-  }): Pick<TargetingRule, "attribute" | "comparisonValue" | "operator" | "resultValue"> {
+  private async normalizeRuleInput(
+    projectId: string,
+    input: {
+      attribute?: string | null;
+      comparisonValue?: TargetingComparisonValue | null;
+      operator?: TargetingRuleOperator | null;
+      resultValue: boolean;
+      segmentId?: string | null;
+      source?: TargetingRuleSource | null;
+    }
+  ): Promise<NormalizedRuleInput> {
+    const source = input.source ?? TargetingRuleSource.Attribute;
+
+    if (source === TargetingRuleSource.Segment) {
+      if (!input.segmentId) {
+        throw new BadRequestException("Segment targeting rules require a segment id");
+      }
+
+      const segment = await this.segmentsRepository.findOne({ where: { id: input.segmentId, projectId } });
+
+      if (!segment) {
+        throw new BadRequestException("Segment targeting rules must reference a segment in this project");
+      }
+
+      return {
+        attribute: null,
+        comparisonValue: null,
+        operator: null,
+        resultValue: input.resultValue,
+        segment,
+        segmentId: segment.id,
+        source
+      };
+    }
+
+    if (!input.attribute || !input.operator || input.comparisonValue === undefined) {
+      throw new BadRequestException("Attribute targeting rules require attribute, operator, and comparison value");
+    }
+
     const attribute = input.attribute.trim();
     validateTargetingComparisonValue(input.operator, input.comparisonValue);
 
@@ -301,7 +369,10 @@ export class TargetingRulesService {
       attribute,
       comparisonValue: input.comparisonValue,
       operator: input.operator,
-      resultValue: input.resultValue
+      resultValue: input.resultValue,
+      segment: null,
+      segmentId: null,
+      source: TargetingRuleSource.Attribute
     };
   }
 
@@ -319,6 +390,10 @@ export class TargetingRulesService {
   private changedRuleSnapshot(rule: TargetingRule, dto: UpdateTargetingRuleDto): AuditSnapshot {
     const snapshot: AuditSnapshot = {};
 
+    if (dto.source !== undefined) {
+      snapshot.source = rule.source;
+    }
+
     if (dto.attribute !== undefined) {
       snapshot.attribute = rule.attribute;
     }
@@ -335,6 +410,12 @@ export class TargetingRulesService {
       snapshot.resultValue = rule.resultValue;
     }
 
+    if (dto.segmentId !== undefined) {
+      snapshot.segmentId = rule.segmentId;
+      snapshot.segmentKey = rule.segment?.key;
+      snapshot.segmentName = rule.segment?.name;
+    }
+
     return snapshot;
   }
 
@@ -344,7 +425,11 @@ export class TargetingRulesService {
       comparisonValue: rule.comparisonValue,
       operator: rule.operator,
       resultValue: rule.resultValue,
-      sortOrder: rule.sortOrder
+      segmentId: rule.segmentId,
+      segmentKey: rule.segment?.key,
+      segmentName: rule.segment?.name,
+      sortOrder: rule.sortOrder,
+      source: rule.source
     };
   }
 
@@ -357,7 +442,16 @@ export class TargetingRulesService {
       id: rule.id,
       operator: rule.operator,
       resultValue: rule.resultValue,
+      segment: rule.segment
+        ? {
+            id: rule.segment.id,
+            key: rule.segment.key,
+            name: rule.segment.name
+          }
+        : null,
+      segmentId: rule.segmentId,
       sortOrder: rule.sortOrder,
+      source: rule.source,
       updatedAt: rule.updatedAt
     };
   }

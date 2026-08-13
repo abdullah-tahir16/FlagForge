@@ -3,9 +3,7 @@
 ## Purpose
 
 Define project-scoped feature flag management, including boolean flags, per-environment configuration, local demo seed behavior, and organization-protected access.
-
 ## Requirements
-
 ### Requirement: Feature flags are project scoped
 
 The system SHALL scope every feature flag to exactly one project and protect access through the project's organization.
@@ -119,8 +117,7 @@ The system SHALL allow an authenticated user to update enabled state, boolean va
 - **THEN** the system rejects or hides the environment configuration as not found
 
 ### Requirement: Demo seed includes feature flags
-
-The system SHALL seed local demo feature flags, rollout configuration, and targeting rules for the demo project.
+The system SHALL seed local demo feature flags, rollout configuration, targeting rules, segments, and segment references for the demo project.
 
 #### Scenario: Seed creates demo feature flags
 - **WHEN** a developer runs `pnpm seed`
@@ -134,9 +131,13 @@ The system SHALL seed local demo feature flags, rollout configuration, and targe
 - **WHEN** a developer runs `pnpm seed`
 - **THEN** at least one demo feature flag environment configuration has representative ordered targeting rules for local dashboard and SDK testing
 
+#### Scenario: Seed creates demo segments
+- **WHEN** a developer runs `pnpm seed`
+- **THEN** the demo project contains representative reusable segments and at least one flag environment configuration references a segment
+
 #### Scenario: Seed is idempotent for feature flags
 - **WHEN** a developer reruns `pnpm seed`
-- **THEN** the seed updates or preserves the demo feature flags, rollout percentages, and targeting rules without creating duplicates
+- **THEN** the seed updates or preserves the demo feature flags, rollout percentages, targeting rules, segments, and segment references without creating duplicates
 
 ### Requirement: Feature flag mutations emit audit events
 
@@ -165,3 +166,4 @@ The system SHALL record audit events after successful per-environment feature fl
 #### Scenario: Environment flag config audit context
 - **WHEN** the system records a feature flag config audit event
 - **THEN** the event includes feature flag id, project id, environment id, resource name, and actor metadata
+

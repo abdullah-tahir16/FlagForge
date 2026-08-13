@@ -6,6 +6,7 @@ import { AuditAction } from "../audit/audit-action.enum";
 import { AuditResourceType } from "../audit/audit-resource-type.enum";
 import { AuditService } from "../audit/audit.service";
 import { AuthenticatedUser } from "../auth/authenticated-user";
+import { EvaluationCacheService } from "../common/cache/evaluation-cache.service";
 import { createKeyFromName } from "../common/fns/create-key-from-name";
 import { Environment } from "../environments/environment.entity";
 import { ProjectsService } from "../projects/projects.service";
@@ -23,6 +24,7 @@ export class FeatureFlagsService {
     private readonly dataSource: DataSource,
     private readonly projectsService: ProjectsService,
     private readonly auditService: AuditService,
+    private readonly evaluationCacheService: EvaluationCacheService,
     @InjectRepository(Environment)
     private readonly environmentsRepository: Repository<Environment>,
     @InjectRepository(EnvironmentFlagConfig)
@@ -52,7 +54,7 @@ export class FeatureFlagsService {
       throw new ConflictException("A feature flag with this key already exists");
     }
 
-    const featureFlag = await this.dataSource.transaction(async (manager) => {
+    const created = await this.dataSource.transaction(async (manager) => {
       const featureFlagsRepository = manager.getRepository(FeatureFlag);
       const environmentsRepository = manager.getRepository(Environment);
       const configsRepository = manager.getRepository(EnvironmentFlagConfig);
@@ -72,7 +74,7 @@ export class FeatureFlagsService {
         where: { projectId }
       });
 
-      await configsRepository.save(
+      const savedConfigs = await configsRepository.save(
         environments.map((environment) =>
           configsRepository.create({
             enabled: false,
@@ -84,10 +86,10 @@ export class FeatureFlagsService {
         )
       );
 
-      return savedFlag;
+      return { environmentIds: savedConfigs.map((config) => config.environmentId), featureFlag: savedFlag };
     });
 
-    const response = await this.findOne(user, projectId, featureFlag.id);
+    const response = await this.findOne(user, projectId, created.featureFlag.id);
     await this.auditService.record(
       user,
       {
@@ -101,6 +103,7 @@ export class FeatureFlagsService {
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshots(created.environmentIds);
 
     return response;
   }
@@ -162,6 +165,7 @@ export class FeatureFlagsService {
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshots(response.environmentConfigs.map((config) => config.environmentId));
 
     return response;
   }
@@ -174,20 +178,26 @@ export class FeatureFlagsService {
       throw new NotFoundException("Feature flag was not found");
     }
 
+    const oldValue = this.featureFlagSnapshot(featureFlag);
+    const resourceId = featureFlag.id;
+    const resourceName = featureFlag.name;
+    const environmentIds = (featureFlag.environmentConfigs ?? []).map((config) => config.environmentId);
+
     await this.featureFlagsRepository.remove(featureFlag);
     await this.auditService.record(
       user,
       {
         action: AuditAction.FeatureFlagDeleted,
         newValue: null,
-        oldValue: this.featureFlagSnapshot(featureFlag),
+        oldValue,
         projectId,
-        resourceId: featureFlag.id,
-        resourceName: featureFlag.name,
+        resourceId,
+        resourceName,
         resourceType: AuditResourceType.FeatureFlag
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshots(environmentIds);
   }
 
   async updateEnvironmentConfig(
@@ -245,6 +255,7 @@ export class FeatureFlagsService {
       },
       auditContext
     );
+    await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
 
     return this.findOne(user, projectId, flagId);
   }

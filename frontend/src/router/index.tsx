@@ -6,9 +6,12 @@ import HomeContainer from "../presentation/containers/Home";
 import LoginContainer from "../presentation/containers/Login";
 import ProjectDetailContainer from "../presentation/containers/ProjectDetail";
 import ProjectFlagsContainer from "../presentation/containers/ProjectFlags";
+import ProjectSegmentsContainer from "../presentation/containers/ProjectSegments";
 import ProjectsContainer from "../presentation/containers/Projects";
 import ProtectedRouteContainer from "../presentation/containers/ProtectedRoute";
 import RegisterContainer from "../presentation/containers/Register";
+import SegmentDetailContainer from "../presentation/containers/SegmentDetail";
+import SegmentsContainer from "../presentation/containers/Segments";
 
 const router = createBrowserRouter([
   {
@@ -36,6 +39,14 @@ const router = createBrowserRouter([
     )
   },
   {
+    path: "/segments",
+    element: (
+      <ProtectedRouteContainer>
+        <SegmentsContainer />
+      </ProtectedRouteContainer>
+    )
+  },
+  {
     path: "/projects",
     element: (
       <ProtectedRouteContainer>
@@ -56,6 +67,22 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRouteContainer>
         <ProjectFlagsContainer />
+      </ProtectedRouteContainer>
+    )
+  },
+  {
+    path: "/projects/:projectId/segments",
+    element: (
+      <ProtectedRouteContainer>
+        <ProjectSegmentsContainer />
+      </ProtectedRouteContainer>
+    )
+  },
+  {
+    path: "/projects/:projectId/segments/:segmentId",
+    element: (
+      <ProtectedRouteContainer>
+        <SegmentDetailContainer />
       </ProtectedRouteContainer>
     )
   },
