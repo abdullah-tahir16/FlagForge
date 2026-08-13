@@ -41,7 +41,7 @@ The system SHALL accept SDK evaluation context request bodies for single-flag an
 - **THEN** the system ignores those values for targeting and rollout decisions without exposing server errors
 
 ### Requirement: SDK can evaluate one boolean flag
-The system SHALL allow an SDK client to evaluate one boolean flag by flag key for the SDK key's environment, including segment targeting rules, direct attribute targeting rules, and deterministic percentage rollout behavior.
+The system SHALL allow an SDK client to evaluate one boolean flag by flag key for the SDK key's environment, including segment targeting rules, direct attribute targeting rules, deterministic percentage rollout behavior, and Redis-backed environment snapshot caching.
 
 #### Scenario: Enabled boolean flag with full rollout returns configured value
 - **WHEN** an SDK client evaluates an enabled boolean flag with no matching segment or attribute targeting rule and rollout percentage `100` for its environment
@@ -49,7 +49,7 @@ The system SHALL allow an SDK client to evaluate one boolean flag by flag key fo
 
 #### Scenario: Disabled boolean flag returns false
 - **WHEN** an SDK client evaluates a disabled boolean flag for its environment
-- **THEN** the system returns `false` with a disabled reason before applying segment targeting, attribute targeting, or rollout logic
+- **THEN** the system returns `false` with a disabled reason before applying segment targeting, attribute targeting, rollout logic, or static configured value behavior
 
 #### Scenario: Missing flag returns safe default
 - **WHEN** an SDK client evaluates a flag key that does not exist in the SDK key's project
@@ -91,8 +91,16 @@ The system SHALL allow an SDK client to evaluate one boolean flag by flag key fo
 - **WHEN** an SDK client evaluates an enabled boolean flag with no matching targeting rule and rollout percentage below `100` without a `userId`
 - **THEN** the system returns `false` with missing rollout context reason metadata
 
+#### Scenario: Cached single flag evaluation preserves semantics
+- **WHEN** an SDK client evaluates one flag and a valid environment snapshot exists in Redis
+- **THEN** the system returns the same value and reason metadata it would return from PostgreSQL-backed evaluation
+
+#### Scenario: Single flag evaluation cache miss
+- **WHEN** an SDK client evaluates one flag and no valid Redis snapshot exists
+- **THEN** the system loads the environment snapshot from PostgreSQL, evaluates the requested flag, and stores the snapshot for later evaluations
+
 ### Requirement: SDK can evaluate all boolean flags
-The system SHALL allow an SDK client to evaluate all boolean flags for the SDK key's environment, including segment targeting rules, direct attribute targeting rules, and deterministic percentage rollout behavior.
+The system SHALL allow an SDK client to evaluate all boolean flags for the SDK key's environment, including segment targeting rules, direct attribute targeting rules, deterministic percentage rollout behavior, and Redis-backed environment snapshot caching.
 
 #### Scenario: Evaluate all returns environment values
 - **WHEN** an SDK client requests all flags for an environment
@@ -121,6 +129,14 @@ The system SHALL allow an SDK client to evaluate all boolean flags for the SDK k
 #### Scenario: Evaluate all preserves stable rollout decisions
 - **WHEN** the same SDK client requests all flags for the same environment and `userId` repeatedly
 - **THEN** the system returns the same rollout decisions for each flag each time
+
+#### Scenario: Cached all-flags evaluation preserves semantics
+- **WHEN** an SDK client evaluates all flags and a valid environment snapshot exists in Redis
+- **THEN** the system returns the same flag map and reason metadata it would return from PostgreSQL-backed evaluation
+
+#### Scenario: All-flags evaluation cache miss
+- **WHEN** an SDK client evaluates all flags and no valid Redis snapshot exists
+- **THEN** the system loads the environment snapshot from PostgreSQL, evaluates all flags, and stores the snapshot for later evaluations
 
 ### Requirement: Evaluation responses include reason metadata
 The system SHALL return reason metadata for SDK evaluation responses.

@@ -12,6 +12,7 @@ import { EvaluationsModule } from "./evaluations/evaluations.module";
 import { FeatureFlagsModule } from "./feature-flags/feature-flags.module";
 import { OrganizationsModule } from "./organizations/organizations.module";
 import { ProjectsModule } from "./projects/projects.module";
+import { RealtimeModule } from "./realtime/realtime.module";
 import { SdkKeysModule } from "./sdk-keys/sdk-keys.module";
 import { SegmentsModule } from "./segments/segments.module";
 import { TargetingRulesModule } from "./targeting-rules/targeting-rules.module";
@@ -27,6 +28,7 @@ import { UsersModule } from "./users/users.module";
     TypeOrmModule.forRootAsync({
       useFactory: databaseConfig
     }),
+    RealtimeModule,
     EvaluationCacheModule,
     HealthModule,
     AuthModule,

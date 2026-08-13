@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException } from "@nestjs/common";
 import { AuditAction } from "../src/audit/audit-action.enum";
 import { AuditResourceType } from "../src/audit/audit-resource-type.enum";
 import { AuthenticatedUser } from "../src/auth/authenticated-user";
+import { RealtimeEventAction } from "../src/realtime/realtime-event-action.enum";
+import { RealtimeResourceType } from "../src/realtime/realtime-resource-type.enum";
 import { SegmentCondition } from "../src/segments/segment-condition.entity";
 import { SegmentMatchMode } from "../src/segments/segment-match-mode.enum";
 import { Segment } from "../src/segments/segment.entity";
@@ -66,6 +68,7 @@ const createService = () => {
   const targetingRules = new Map<string, TargetingRule>();
   const auditService = { record: jest.fn(async () => undefined) };
   const evaluationCacheService = { deleteEnvironmentSnapshots: jest.fn(async () => undefined) };
+  const realtimePublisher = { publishConfigurationChanged: jest.fn() };
   const projectsService = { findProjectForUser: jest.fn(async () => ({ id: "project-1" })) };
 
   const attachConditions = (segment: Segment): Segment => ({
@@ -193,6 +196,7 @@ const createService = () => {
   const service = new SegmentsService(
     auditService as never,
     evaluationCacheService as never,
+    realtimePublisher as never,
     dataSource as never,
     projectsService as never,
     segmentsRepository as never,
@@ -200,7 +204,7 @@ const createService = () => {
     targetingRulesRepository as never
   );
 
-  return { auditService, conditions, evaluationCacheService, segments, service, targetingRules };
+  return { auditService, conditions, evaluationCacheService, realtimePublisher, segments, service, targetingRules };
 };
 
 describe("SegmentsService", () => {
@@ -244,7 +248,7 @@ describe("SegmentsService", () => {
   });
 
   it("updates segment metadata without changing the key", async () => {
-    const { evaluationCacheService, segments, service } = createService();
+    const { evaluationCacheService, realtimePublisher, segments, service } = createService();
     segments.set("segment-1", createSegment());
 
     await expect(
@@ -260,6 +264,14 @@ describe("SegmentsService", () => {
       name: "Renamed Segment"
     });
     expect(evaluationCacheService.deleteEnvironmentSnapshots).not.toHaveBeenCalled();
+    expect(realtimePublisher.publishConfigurationChanged).toHaveBeenCalledWith({
+      action: RealtimeEventAction.Updated,
+      environmentIds: [],
+      organizationId: "org-1",
+      projectId: "project-1",
+      resourceId: "segment-1",
+      resourceType: RealtimeResourceType.Segment
+    });
   });
 
   it("creates, updates, deletes, and reorders segment conditions with validation", async () => {

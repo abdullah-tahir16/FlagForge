@@ -134,6 +134,21 @@ Use this structure for frontend domains:
 - Segment metadata, match mode, and condition mutations must invalidate only environments whose targeting rules reference the segment. Unreferenced segment mutations should not delete cache entries.
 - Cache invalidation failures must not fail successful management mutations or expose raw Redis details to API clients.
 
+## Realtime Dashboard Updates
+
+- Dashboard realtime uses fetch-based Server-Sent Events, not native `EventSource`, because the current frontend keeps access tokens in memory and must send `Authorization: Bearer <access-token>`.
+- The backend stream endpoint is `GET /api/v1/realtime/events` and returns `text/event-stream`.
+- Realtime events are best-effort management notifications. They must never become correctness infrastructure for SDK evaluation or management writes.
+- Use the shared envelope with `id`, `type`, `organizationId`, `projectId`, `environmentIds`, `resourceType`, `resourceId`, `action`, and `occurredAt`.
+- Current event type is `CONFIGURATION_CHANGED`.
+- Current resource types are `FEATURE_FLAG`, `ENVIRONMENT_FLAG_CONFIG`, `TARGETING_RULE`, `SEGMENT`, and `SEGMENT_CONDITION`.
+- Current actions are `CREATED`, `UPDATED`, `DELETED`, and `REORDERED`.
+- Backend publishers should emit only after successful mutations and cache invalidation calls, and publishing failures must not fail the mutation.
+- The initial publisher is in-memory and organization-scoped. Do not introduce Redis Pub/Sub, presence, collaboration cursors, or SDK streaming without a dedicated OpenSpec change.
+- Frontend realtime handling should live under `frontend/src/infrastructure/api/Realtime` and `frontend/src/infrastructure/useCases/Realtime`.
+- The frontend should centralize query invalidation decisions instead of adding stream handling to individual pages. Invalidate matching flag, flag detail, targeting rule, segment list/detail/options, and audit log query families.
+- Ignore events from other organizations. A stream outage should degrade silently and retry with bounded backoff while the user remains authenticated.
+
 ## Backend Guidance
 
 - Use NestJS modules by domain.

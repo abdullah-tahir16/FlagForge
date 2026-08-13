@@ -3,7 +3,7 @@ import type { AppHealth } from "../../../core/types/App";
 import { getAccessToken } from "../Auth/session";
 import type { HealthResponseDto } from "./types";
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1";
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1";
 
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,

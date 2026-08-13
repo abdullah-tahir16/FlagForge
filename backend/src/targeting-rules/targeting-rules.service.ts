@@ -11,6 +11,10 @@ import { Environment } from "../environments/environment.entity";
 import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../feature-flags/feature-flag.entity";
 import { ProjectsService } from "../projects/projects.service";
+import { RealtimeEventAction } from "../realtime/realtime-event-action.enum";
+import type { PublishConfigurationChangedInput } from "../realtime/realtime-event.type";
+import { RealtimeResourceType } from "../realtime/realtime-resource-type.enum";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import { Segment } from "../segments/segment.entity";
 import { CreateTargetingRuleDto } from "./dto/create-targeting-rule.dto";
 import { TargetingRuleResponse } from "./dto/targeting-rule-response.dto";
@@ -43,6 +47,7 @@ export class TargetingRulesService {
   constructor(
     private readonly auditService: AuditService,
     private readonly evaluationCacheService: EvaluationCacheService,
+    private readonly realtimePublisher: RealtimePublisherService,
     private readonly dataSource: DataSource,
     private readonly projectsService: ProjectsService,
     @InjectRepository(Environment)
@@ -103,6 +108,14 @@ export class TargetingRulesService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Created,
+      environmentIds: [environmentId],
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: rule.id,
+      resourceType: RealtimeResourceType.TargetingRule
+    });
 
     return this.toResponse(rule);
   }
@@ -153,6 +166,14 @@ export class TargetingRulesService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Updated,
+      environmentIds: [environmentId],
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: savedRule.id,
+      resourceType: RealtimeResourceType.TargetingRule
+    });
 
     return this.toResponse(savedRule);
   }
@@ -192,6 +213,14 @@ export class TargetingRulesService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Deleted,
+      environmentIds: [environmentId],
+      organizationId: user.organizationId,
+      projectId,
+      resourceId,
+      resourceType: RealtimeResourceType.TargetingRule
+    });
   }
 
   async reorder(
@@ -236,6 +265,14 @@ export class TargetingRulesService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Reordered,
+      environmentIds: [environmentId],
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: config.id,
+      resourceType: RealtimeResourceType.TargetingRule
+    });
 
     return reorderedRules.map((rule) => this.toResponse(rule));
   }
@@ -252,6 +289,14 @@ export class TargetingRulesService {
 
     if (!allIdsMatch) {
       throw new BadRequestException("Reorder payload contains unknown targeting rules");
+    }
+  }
+
+  private publishConfigurationChanged(input: PublishConfigurationChangedInput): void {
+    try {
+      this.realtimePublisher.publishConfigurationChanged(input);
+    } catch {
+      // Realtime notifications are best-effort and must not fail successful management writes.
     }
   }
 

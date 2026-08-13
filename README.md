@@ -94,6 +94,8 @@ DELETE /api/v1/projects/:projectId/environments/:environmentId/sdk-keys/:sdkKeyI
 
 GET /api/v1/audit
 
+GET /api/v1/realtime/events
+
 POST /api/v1/sdk/evaluate/:flagKey
 POST /api/v1/sdk/evaluate
 ```
@@ -138,6 +140,15 @@ EVALUATION_CACHE_TTL_SECONDS=300
 ```
 
 On cache miss, invalid JSON, unsupported cache schema version, or Redis outage, evaluation falls back to PostgreSQL and preserves the same response semantics. Management mutations that can change evaluation results delete affected environment snapshot keys after successful writes.
+
+Dashboard realtime updates use an authenticated fetch-based Server-Sent Events stream:
+
+```text
+GET /api/v1/realtime/events
+Authorization: Bearer <access-token>
+```
+
+The stream publishes best-effort `CONFIGURATION_CHANGED` events for feature flag, environment flag config, targeting rule, segment, and segment condition mutations. Events include organization id, project id, affected environment ids, resource type, resource id, action, and timestamp. The React dashboard listens while authenticated and invalidates matching TanStack Query caches for flags, targeting rules, segments, and audit logs. If the stream disconnects or cannot connect, the dashboard remains usable and retries with bounded backoff.
 
 ## Project Progress
 
@@ -197,7 +208,7 @@ The project should demonstrate:
 * authentication
 * authorization
 * caching
-* WebSockets
+* realtime update streams
 * feature flag evaluation
 * percentage rollouts
 * user targeting

@@ -45,8 +45,8 @@ tasks.md      implementation checklist
 | 8 | `add-percentage-rollouts` | Archived | deterministic rollout buckets and rollout configuration |
 | 9 | `add-targeting-rules` | Archived | ordered rules, attribute operators, first-match evaluation |
 | 10 | `add-segments` | Archived | reusable user segments, segment matching, and segment-source targeting |
-| 11 | `add-redis-cache` | Active | Redis-backed environment evaluation snapshots, fallback, and invalidation |
-| 12 | `add-realtime-updates` | Planned | WebSocket flag update notifications built on the cache invalidation boundary |
+| 11 | `add-redis-cache` | Archived | Redis-backed environment evaluation snapshots, fallback, and invalidation |
+| 12 | `add-realtime-updates` | Active | authenticated SSE dashboard configuration notifications built on the cache invalidation boundary |
 | 13 | `add-js-sdk` | Planned | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
 | 14 | `add-analytics` | Planned | evaluation events, basic dashboard metrics, async processing |
 | 15 | `add-ci-and-docker-polish` | Planned | CI workflow, Docker polish, production-oriented docs |
@@ -134,11 +134,11 @@ Exit criteria:
 | --- | --- | --- |
 | v0.2 | Rollouts and audit | deterministic percentage rollouts, audit logs |
 | v0.3 | Targeting | attribute rules, operators, ordered rules, reusable segments |
-| v0.4 | Performance and realtime | Redis cache, cache invalidation, WebSockets |
+| v0.4 | Performance and realtime | Redis cache, cache invalidation, authenticated SSE dashboard updates |
 | v0.5 | SDK and analytics | JavaScript SDK, evaluation events, charts |
 | v1.0 | Portfolio polish | CI/CD, Docker polish, OpenAPI docs, screenshots, ADRs |
 
-Current performance step: `add-redis-cache` adds environment snapshot caching for SDK evaluation. The next likely change is `add-realtime-updates`, using the same environment-level mutation boundaries to notify connected dashboard or SDK clients.
+Current performance step: `add-realtime-updates` adds authenticated fetch/SSE notifications for the dashboard, using the same mutation boundaries as Redis cache invalidation. The next likely change is `add-js-sdk`, packaging a JavaScript client for SDK evaluation with safe defaults.
 
 ## Change Sizing Rule
 

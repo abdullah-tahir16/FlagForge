@@ -7,6 +7,8 @@ import { EnvironmentFlagConfig } from "../src/feature-flags/environment-flag-con
 import { FeatureFlag } from "../src/feature-flags/feature-flag.entity";
 import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
 import { ProjectsService } from "../src/projects/projects.service";
+import { RealtimeEventAction } from "../src/realtime/realtime-event-action.enum";
+import { RealtimeResourceType } from "../src/realtime/realtime-resource-type.enum";
 import { TargetingRule } from "../src/targeting-rules/targeting-rule.entity";
 import { TargetingRuleOperator } from "../src/targeting-rules/targeting-rule-operator.enum";
 import { TargetingRuleSource } from "../src/targeting-rules/targeting-rule-source.enum";
@@ -80,6 +82,7 @@ const createService = () => {
   const segments = new Map<string, Segment>();
   const auditService = { record: jest.fn(async () => undefined) };
   const evaluationCacheService = { deleteEnvironmentSnapshot: jest.fn(async () => undefined) };
+  const realtimePublisher = { publishConfigurationChanged: jest.fn() };
   const projectsService = { findProjectForUser: jest.fn(async () => ({ id: "project-1" })) };
   const environmentsRepository = {
     findOne: jest.fn(async ({ where }: { where: Partial<Environment> }) =>
@@ -154,6 +157,7 @@ const createService = () => {
   const service = new TargetingRulesService(
     auditService as unknown as AuditService,
     evaluationCacheService as never,
+    realtimePublisher as never,
     dataSource as never,
     projectsService as unknown as ProjectsService,
     environmentsRepository as never,
@@ -163,12 +167,12 @@ const createService = () => {
     rulesRepository as never
   );
 
-  return { auditService, dataSource, evaluationCacheService, projectsService, rules, rulesRepository, segments, service };
+  return { auditService, dataSource, evaluationCacheService, projectsService, realtimePublisher, rules, rulesRepository, segments, service };
 };
 
 describe("TargetingRulesService", () => {
   it("lists and creates ordered rules with audit events", async () => {
-    const { auditService, evaluationCacheService, rules, service } = createService();
+    const { auditService, evaluationCacheService, realtimePublisher, rules, service } = createService();
     rules.set("rule-1", createRule());
 
     await expect(service.findAll(owner, "project-1", "flag-1", "environment-1")).resolves.toEqual([
@@ -194,6 +198,14 @@ describe("TargetingRulesService", () => {
       undefined
     );
     expect(evaluationCacheService.deleteEnvironmentSnapshot).toHaveBeenCalledWith("environment-1");
+    expect(realtimePublisher.publishConfigurationChanged).toHaveBeenCalledWith({
+      action: RealtimeEventAction.Created,
+      environmentIds: ["environment-1"],
+      organizationId: "org-1",
+      projectId: "project-1",
+      resourceId: created.id,
+      resourceType: RealtimeResourceType.TargetingRule
+    });
   });
 
   it("updates, deletes, and reorders rules with validation", async () => {

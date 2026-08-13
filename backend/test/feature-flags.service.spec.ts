@@ -11,6 +11,8 @@ import { FeatureFlag } from "../src/feature-flags/feature-flag.entity";
 import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
 import { FeatureFlagsService } from "../src/feature-flags/feature-flags.service";
 import { ProjectsService } from "../src/projects/projects.service";
+import { RealtimeEventAction } from "../src/realtime/realtime-event-action.enum";
+import { RealtimeResourceType } from "../src/realtime/realtime-resource-type.enum";
 import { UserRole } from "../src/users/user-role.enum";
 
 const now = new Date("2026-08-13T00:00:00.000Z");
@@ -70,7 +72,11 @@ const createConfig = (overrides: Partial<EnvironmentFlagConfig> = {}): Environme
     ...overrides
   }) as EnvironmentFlagConfig;
 
-const createService = () => {
+const createService = (
+  realtimePublisherOverride?: {
+    publishConfigurationChanged: jest.Mock;
+  }
+) => {
   const configs = new Map<string, EnvironmentFlagConfig>();
   const environments = new Map<string, Environment>();
   const featureFlags = new Map<string, FeatureFlag>();
@@ -83,6 +89,9 @@ const createService = () => {
   const evaluationCacheService = {
     deleteEnvironmentSnapshot: jest.fn(async () => undefined),
     deleteEnvironmentSnapshots: jest.fn(async () => undefined)
+  };
+  const realtimePublisher = realtimePublisherOverride ?? {
+    publishConfigurationChanged: jest.fn()
   };
 
   const withRelations = (featureFlag: FeatureFlag): FeatureFlag => {
@@ -221,6 +230,7 @@ const createService = () => {
     projectsService as unknown as ProjectsService,
     auditService as unknown as AuditService,
     evaluationCacheService as never,
+    realtimePublisher as never,
     environmentsRepository as never,
     configsRepository as never,
     featureFlagsRepository as never
@@ -236,13 +246,14 @@ const createService = () => {
     featureFlags,
     featureFlagsRepository,
     projectsService,
+    realtimePublisher,
     service
   };
 };
 
 describe("FeatureFlagsService", () => {
   it("creates a project-scoped boolean feature flag with default environment configs", async () => {
-    const { auditService, configs, environments, evaluationCacheService, service } = createService();
+    const { auditService, configs, environments, evaluationCacheService, realtimePublisher, service } = createService();
     environments.set("environment-2", createEnvironment({ id: "environment-2", key: "staging", sortOrder: 20 }));
     environments.set("environment-1", createEnvironment());
 
@@ -275,6 +286,31 @@ describe("FeatureFlagsService", () => {
       undefined
     );
     expect(evaluationCacheService.deleteEnvironmentSnapshots).toHaveBeenCalledWith(["environment-1", "environment-2"]);
+    expect(realtimePublisher.publishConfigurationChanged).toHaveBeenCalledWith({
+      action: RealtimeEventAction.Created,
+      environmentIds: ["environment-1", "environment-2"],
+      organizationId: "org-1",
+      projectId: "project-1",
+      resourceId: result.id,
+      resourceType: RealtimeResourceType.FeatureFlag
+    });
+  });
+
+  it("does not fail successful writes when realtime publishing fails", async () => {
+    const realtimePublisher = {
+      publishConfigurationChanged: jest.fn(() => {
+        throw new Error("realtime unavailable");
+      })
+    };
+    const { environments, service } = createService(realtimePublisher);
+    environments.set("environment-1", createEnvironment());
+
+    await expect(
+      service.create(owner, "project-1", {
+        name: "Fault Tolerant Flag"
+      })
+    ).resolves.toMatchObject({ key: "fault-tolerant-flag" });
+    expect(realtimePublisher.publishConfigurationChanged).toHaveBeenCalled();
   });
 
   it("rejects duplicate keys and uses a transaction for atomic config creation", async () => {

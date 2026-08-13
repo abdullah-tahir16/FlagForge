@@ -14,6 +14,10 @@ import {
   resolveCursorPaginationLimit
 } from "../common/pagination/cursor-pagination";
 import { ProjectsService } from "../projects/projects.service";
+import { RealtimeEventAction } from "../realtime/realtime-event-action.enum";
+import type { PublishConfigurationChangedInput } from "../realtime/realtime-event.type";
+import { RealtimeResourceType } from "../realtime/realtime-resource-type.enum";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import { TargetingRule } from "../targeting-rules/targeting-rule.entity";
 import { validateTargetingComparisonValue } from "../targeting-rules/targeting-rule-matcher";
 import type { CreateSegmentConditionDto } from "./dto/create-segment-condition.dto";
@@ -32,6 +36,7 @@ export class SegmentsService {
   constructor(
     private readonly auditService: AuditService,
     private readonly evaluationCacheService: EvaluationCacheService,
+    private readonly realtimePublisher: RealtimePublisherService,
     private readonly dataSource: DataSource,
     private readonly projectsService: ProjectsService,
     @InjectRepository(Segment)
@@ -161,7 +166,16 @@ export class SegmentsService {
       },
       auditContext
     );
-    await this.invalidateReferencedEnvironmentSnapshots(segmentId);
+    const referencedEnvironmentIds = await this.resolveReferencedEnvironmentIds(segmentId);
+    await this.invalidateEnvironmentSnapshots(referencedEnvironmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Updated,
+      environmentIds: referencedEnvironmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: savedSegment.id,
+      resourceType: RealtimeResourceType.Segment
+    });
 
     return this.toResponse(savedSegment);
   }
@@ -226,7 +240,16 @@ export class SegmentsService {
       },
       auditContext
     );
-    await this.invalidateReferencedEnvironmentSnapshots(segmentId);
+    const referencedEnvironmentIds = await this.resolveReferencedEnvironmentIds(segmentId);
+    await this.invalidateEnvironmentSnapshots(referencedEnvironmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Created,
+      environmentIds: referencedEnvironmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: condition.id,
+      resourceType: RealtimeResourceType.SegmentCondition
+    });
 
     return this.findOne(user, projectId, segmentId);
   }
@@ -273,7 +296,16 @@ export class SegmentsService {
       },
       auditContext
     );
-    await this.invalidateReferencedEnvironmentSnapshots(segmentId);
+    const referencedEnvironmentIds = await this.resolveReferencedEnvironmentIds(segmentId);
+    await this.invalidateEnvironmentSnapshots(referencedEnvironmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Updated,
+      environmentIds: referencedEnvironmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: savedCondition.id,
+      resourceType: RealtimeResourceType.SegmentCondition
+    });
 
     return this.findOne(user, projectId, segmentId);
   }
@@ -310,7 +342,16 @@ export class SegmentsService {
       },
       auditContext
     );
-    await this.invalidateReferencedEnvironmentSnapshots(segmentId);
+    const referencedEnvironmentIds = await this.resolveReferencedEnvironmentIds(segmentId);
+    await this.invalidateEnvironmentSnapshots(referencedEnvironmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Deleted,
+      environmentIds: referencedEnvironmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId,
+      resourceType: RealtimeResourceType.SegmentCondition
+    });
 
     return this.findOne(user, projectId, segmentId);
   }
@@ -348,20 +389,40 @@ export class SegmentsService {
       },
       auditContext
     );
-    await this.invalidateReferencedEnvironmentSnapshots(segmentId);
+    const referencedEnvironmentIds = await this.resolveReferencedEnvironmentIds(segmentId);
+    await this.invalidateEnvironmentSnapshots(referencedEnvironmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Reordered,
+      environmentIds: referencedEnvironmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: segment.id,
+      resourceType: RealtimeResourceType.SegmentCondition
+    });
 
     return this.findOne(user, projectId, segmentId);
   }
 
-  private async invalidateReferencedEnvironmentSnapshots(segmentId: string): Promise<void> {
+  private async resolveReferencedEnvironmentIds(segmentId: string): Promise<string[]> {
     const rows = await this.targetingRulesRepository
       .createQueryBuilder("targetingRule")
       .innerJoin("targetingRule.environmentFlagConfig", "environmentConfig")
       .select("DISTINCT environmentConfig.environment_id", "environmentId")
       .where("targetingRule.segment_id = :segmentId", { segmentId })
       .getRawMany<{ environmentId: string }>();
-    const environmentIds = rows.map((row) => row.environmentId);
 
+    return rows.map((row) => row.environmentId);
+  }
+
+  private publishConfigurationChanged(input: PublishConfigurationChangedInput): void {
+    try {
+      this.realtimePublisher.publishConfigurationChanged(input);
+    } catch {
+      // Realtime notifications are best-effort and must not fail successful management writes.
+    }
+  }
+
+  private async invalidateEnvironmentSnapshots(environmentIds: string[]): Promise<void> {
     if (environmentIds.length > 0) {
       await this.evaluationCacheService.deleteEnvironmentSnapshots(environmentIds);
     }

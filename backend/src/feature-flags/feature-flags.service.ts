@@ -10,6 +10,10 @@ import { EvaluationCacheService } from "../common/cache/evaluation-cache.service
 import { createKeyFromName } from "../common/fns/create-key-from-name";
 import { Environment } from "../environments/environment.entity";
 import { ProjectsService } from "../projects/projects.service";
+import { RealtimeEventAction } from "../realtime/realtime-event-action.enum";
+import type { PublishConfigurationChangedInput } from "../realtime/realtime-event.type";
+import { RealtimeResourceType } from "../realtime/realtime-resource-type.enum";
+import { RealtimePublisherService } from "../realtime/realtime-publisher.service";
 import { CreateFeatureFlagDto } from "./dto/create-feature-flag.dto";
 import { FeatureFlagResponse } from "./dto/feature-flag-response.dto";
 import { UpdateEnvironmentFlagConfigDto } from "./dto/update-environment-flag-config.dto";
@@ -25,6 +29,7 @@ export class FeatureFlagsService {
     private readonly projectsService: ProjectsService,
     private readonly auditService: AuditService,
     private readonly evaluationCacheService: EvaluationCacheService,
+    private readonly realtimePublisher: RealtimePublisherService,
     @InjectRepository(Environment)
     private readonly environmentsRepository: Repository<Environment>,
     @InjectRepository(EnvironmentFlagConfig)
@@ -104,6 +109,14 @@ export class FeatureFlagsService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshots(created.environmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Created,
+      environmentIds: created.environmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: response.id,
+      resourceType: RealtimeResourceType.FeatureFlag
+    });
 
     return response;
   }
@@ -166,6 +179,14 @@ export class FeatureFlagsService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshots(response.environmentConfigs.map((config) => config.environmentId));
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Updated,
+      environmentIds: response.environmentConfigs.map((config) => config.environmentId),
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: response.id,
+      resourceType: RealtimeResourceType.FeatureFlag
+    });
 
     return response;
   }
@@ -198,6 +219,14 @@ export class FeatureFlagsService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshots(environmentIds);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Deleted,
+      environmentIds,
+      organizationId: user.organizationId,
+      projectId,
+      resourceId,
+      resourceType: RealtimeResourceType.FeatureFlag
+    });
   }
 
   async updateEnvironmentConfig(
@@ -256,6 +285,14 @@ export class FeatureFlagsService {
       auditContext
     );
     await this.evaluationCacheService.deleteEnvironmentSnapshot(environmentId);
+    this.publishConfigurationChanged({
+      action: RealtimeEventAction.Updated,
+      environmentIds: [environmentId],
+      organizationId: user.organizationId,
+      projectId,
+      resourceId: config.id,
+      resourceType: RealtimeResourceType.EnvironmentFlagConfig
+    });
 
     return this.findOne(user, projectId, flagId);
   }
@@ -275,6 +312,14 @@ export class FeatureFlagsService {
     }
 
     return featureFlag;
+  }
+
+  private publishConfigurationChanged(input: PublishConfigurationChangedInput): void {
+    try {
+      this.realtimePublisher.publishConfigurationChanged(input);
+    } catch {
+      // Realtime notifications are best-effort and must not fail successful management writes.
+    }
   }
 
   private toResponse(featureFlag: FeatureFlag): FeatureFlagResponse {
