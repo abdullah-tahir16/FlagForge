@@ -23,7 +23,11 @@ export const auditActionLabels: Record<AuditAction, string> = {
   PROJECT_DELETED: "Project deleted",
   PROJECT_UPDATED: "Project updated",
   SDK_KEY_CREATED: "SDK key created",
-  SDK_KEY_REVOKED: "SDK key revoked"
+  SDK_KEY_REVOKED: "SDK key revoked",
+  TARGETING_RULE_CREATED: "Targeting rule created",
+  TARGETING_RULE_DELETED: "Targeting rule deleted",
+  TARGETING_RULE_REORDERED: "Targeting rules reordered",
+  TARGETING_RULE_UPDATED: "Targeting rule updated"
 };
 
 export const auditResourceLabels: Record<AuditResourceType, string> = {
@@ -31,7 +35,8 @@ export const auditResourceLabels: Record<AuditResourceType, string> = {
   ENVIRONMENT_FLAG_CONFIG: "Flag config",
   FEATURE_FLAG: "Feature flag",
   PROJECT: "Project",
-  SDK_KEY: "SDK key"
+  SDK_KEY: "SDK key",
+  TARGETING_RULE: "Targeting rule"
 };
 
 export const auditActionTone = (action: AuditAction): BadgeTone => {
@@ -43,5 +48,5 @@ export const auditActionTone = (action: AuditAction): BadgeTone => {
     return "success";
   }
 
-  return action === "FEATURE_FLAG_CONFIG_UPDATED" ? "primary" : "info";
+  return action === "FEATURE_FLAG_CONFIG_UPDATED" || action.startsWith("TARGETING_RULE_") ? "primary" : "info";
 };

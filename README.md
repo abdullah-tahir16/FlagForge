@@ -841,6 +841,20 @@ false
 
 Administrators should be able to target users based on attributes.
 
+Implementation scope:
+
+- Targeting rules are stored per feature flag environment configuration.
+- Development, staging, and production can have different ordered rule stacks for the same flag.
+- The management API uses the environment-scoped path:
+
+```text
+GET    /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules
+POST   /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules
+PATCH  /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules/:ruleId
+DELETE /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules/:ruleId
+POST   /api/v1/projects/:projectId/flags/:flagId/environments/:environmentId/rules/reorder
+```
+
 Example:
 
 ```text
@@ -964,6 +978,8 @@ false
 Rules must be evaluated from top to bottom.
 
 The first matching rule wins.
+
+If no targeting rule matches, evaluation falls back to percentage rollout and then the configured boolean value behavior.
 
 ---
 

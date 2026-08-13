@@ -42,9 +42,9 @@ tasks.md      implementation checklist
 | 5 | `add-sdk-keys-and-evaluation-api` | Archived | SDK key creation, hashed keys, single/all flag evaluation APIs |
 | 6 | `add-dashboard-flag-management` | Planned | dashboard project/flag views, environment switching, flag toggling |
 | 7 | `add-audit-logs` | Archived | audit events for important management operations |
-| 8 | `add-percentage-rollouts` | Active | deterministic rollout buckets and rollout configuration |
-| 9 | `add-targeting-rules` | Planned | ordered rules, attribute operators, first-match evaluation |
-| 10 | `add-segments` | Planned | reusable user segments and segment matching |
+| 8 | `add-percentage-rollouts` | Archived | deterministic rollout buckets and rollout configuration |
+| 9 | `add-targeting-rules` | Archived | ordered rules, attribute operators, first-match evaluation |
+| 10 | `add-segments` | Active | reusable user segments and segment matching |
 | 11 | `add-redis-cache` | Planned | cached environment flag configuration and invalidation |
 | 12 | `add-realtime-updates` | Planned | WebSocket flag update notifications |
 | 13 | `add-js-sdk` | Planned | `@flagforge/js-sdk` client, safe defaults, local API wrapper |
@@ -119,6 +119,7 @@ Included:
 - flag list/detail
 - flag toggle and edit forms
 - audit log read model
+- targeting rule management for flag environment configurations
 
 Exit criteria:
 

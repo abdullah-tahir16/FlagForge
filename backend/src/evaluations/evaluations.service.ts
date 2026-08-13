@@ -3,10 +3,13 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EnvironmentFlagConfig } from "../feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../feature-flags/feature-flag.entity";
+import { TargetingRule } from "../targeting-rules/targeting-rule.entity";
+import { findMatchingTargetingRule } from "../targeting-rules/targeting-rule-matcher";
 import { SdkEvaluationRequest } from "./dto/evaluation-request.dto";
 import {
   AllEvaluationsResponse,
   EvaluationEnvironmentResponse,
+  EvaluationTargetingRuleResponse,
   EvaluationReason,
   SingleEvaluationResponse
 } from "./dto/evaluation-response.dto";
@@ -39,6 +42,7 @@ export class EvaluationsService {
     }
 
     const config = await this.environmentFlagConfigsRepository.findOne({
+      relations: { targetingRules: true },
       where: {
         environmentId: context.environment.id,
         featureFlagId: featureFlag.id
@@ -51,7 +55,7 @@ export class EvaluationsService {
 
     const evaluated = this.evaluateConfig(context, featureFlag.key, config, evaluationContext);
 
-    return this.toSingleResponse(context, featureFlag.key, evaluated.value, evaluated.reason);
+    return this.toSingleResponse(context, featureFlag.key, evaluated.value, evaluated.reason, evaluated.targetingRule);
   }
 
   async evaluateAll(
@@ -66,8 +70,10 @@ export class EvaluationsService {
         "environmentConfig.environment_id = :environmentId",
         { environmentId: context.environment.id }
       )
+      .leftJoinAndSelect("environmentConfig.targetingRules", "targetingRule")
       .where("featureFlag.project_id = :projectId", { projectId: context.environment.projectId })
       .orderBy("featureFlag.key", "ASC")
+      .addOrderBy("targetingRule.sort_order", "ASC")
       .getMany();
     const flags: Record<string, boolean> = {};
     const reasons: AllEvaluationsResponse["reasons"] = {};
@@ -95,9 +101,19 @@ export class EvaluationsService {
     flagKey: string,
     config: EnvironmentFlagConfig,
     evaluationContext: SdkEvaluationRequest
-  ): { reason: EvaluationReason; value: boolean } {
+  ): { reason: EvaluationReason; targetingRule?: EvaluationTargetingRuleResponse; value: boolean } {
     if (!config.enabled) {
       return { reason: "DISABLED", value: false };
+    }
+
+    const targetingRule = findMatchingTargetingRule(this.getOrderedTargetingRules(config), evaluationContext);
+
+    if (targetingRule) {
+      return {
+        reason: "TARGETING_RULE_MATCH",
+        targetingRule: this.toTargetingRuleResponse(targetingRule),
+        value: targetingRule.resultValue
+      };
     }
 
     const rolloutPercentage = config.rolloutPercentage ?? 100;
@@ -125,6 +141,10 @@ export class EvaluationsService {
     return { reason: "PERCENTAGE_ROLLOUT", value: config.value };
   }
 
+  private getOrderedTargetingRules(config: EnvironmentFlagConfig): TargetingRule[] {
+    return [...(config.targetingRules ?? [])].sort((first, second) => first.sortOrder - second.sortOrder);
+  }
+
   private toEnvironmentResponse(context: SdkEvaluationContext): EvaluationEnvironmentResponse {
     return {
       id: context.environment.id,
@@ -138,14 +158,24 @@ export class EvaluationsService {
     context: SdkEvaluationContext,
     key: string,
     value: boolean,
-    reason: EvaluationReason
+    reason: EvaluationReason,
+    targetingRule?: EvaluationTargetingRuleResponse
   ): SingleEvaluationResponse {
     return {
       environment: this.toEnvironmentResponse(context),
       evaluatedAt: new Date(),
       key,
       reason,
+      targetingRule,
       value
+    };
+  }
+
+  private toTargetingRuleResponse(rule: TargetingRule): EvaluationTargetingRuleResponse {
+    return {
+      attribute: rule.attribute,
+      id: rule.id,
+      operator: rule.operator
     };
   }
 }

@@ -7,17 +7,29 @@ import DataList from "../../Common/DataList";
 import DataRow from "../../Common/DataRow";
 import Form from "../../Common/Form";
 import TextInput from "../../Common/TextInput";
+import TargetingRuleManager from "../TargetingRuleManager";
 
 interface Props {
   configs: EnvironmentFlagConfig[];
   errorMessage?: string | null;
+  flagId: string;
   isSubmitting: boolean;
   onSubmit: (environmentId: string, values: Record<string, unknown>) => Promise<void>;
+  projectId: string;
   updatingEnvironmentId?: string;
   validate: (values: Record<string, unknown>) => Partial<Record<string, string>>;
 }
 
-const EnvironmentConfigList = ({ configs, errorMessage, isSubmitting, onSubmit, updatingEnvironmentId, validate }: Props) => (
+const EnvironmentConfigList = ({
+  configs,
+  errorMessage,
+  flagId,
+  isSubmitting,
+  onSubmit,
+  projectId,
+  updatingEnvironmentId,
+  validate
+}: Props) => (
   <div className="grid gap-3">
     {errorMessage ? (
       <Alert tone="danger" title="Configuration could not be saved">
@@ -120,6 +132,7 @@ const EnvironmentConfigList = ({ configs, errorMessage, isSubmitting, onSubmit, 
                   </Field>
                 </div>
               </Form>
+              <TargetingRuleManager config={config} flagId={flagId} projectId={projectId} />
             </DataRow>
           )}
           validate={validate}

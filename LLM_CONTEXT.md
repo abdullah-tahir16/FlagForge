@@ -99,6 +99,18 @@ Use this structure for frontend domains:
 - Applying or clearing filters must reset pagination to the first page.
 - Changing page must preserve the active filters and only change the cursor.
 
+## Targeting Rules
+
+- Targeting rules are scoped to `EnvironmentFlagConfig`, not only to `FeatureFlag`, so each environment can have different rules.
+- Rule management endpoints live under `projects/:projectId/flags/:flagId/environments/:environmentId/rules`.
+- Targeting rule lists are intentionally unpaginated because evaluation order requires the full rule stack.
+- A targeting rule has one condition for the current MVP: `attribute`, `operator`, `comparisonValue`, `resultValue`, and `sortOrder`.
+- Supported MVP operators are `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IN`, `NOT_IN`, `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, and `LESS_THAN_OR_EQUAL`.
+- SDK evaluation order is disabled check, ordered targeting rules first-match-wins, percentage rollout fallback, then static configured value behavior.
+- Disabled flag configs must return false before targeting or rollout logic.
+- Rule mutations must emit audit events using targeting rule action/resource metadata.
+- Frontend targeting forms must use React Final Form and Zod, shared Common controls, semantic app theme tokens, lucide icons, and compact dashboard rows.
+
 ## Backend Guidance
 
 - Use NestJS modules by domain.

@@ -10,7 +10,11 @@ export const auditActions = [
   "FEATURE_FLAG_DELETED",
   "FEATURE_FLAG_CONFIG_UPDATED",
   "SDK_KEY_CREATED",
-  "SDK_KEY_REVOKED"
+  "SDK_KEY_REVOKED",
+  "TARGETING_RULE_CREATED",
+  "TARGETING_RULE_UPDATED",
+  "TARGETING_RULE_DELETED",
+  "TARGETING_RULE_REORDERED"
 ] as const;
 
 export const auditResourceTypes = [
@@ -18,7 +22,8 @@ export const auditResourceTypes = [
   "ENVIRONMENT",
   "FEATURE_FLAG",
   "ENVIRONMENT_FLAG_CONFIG",
-  "SDK_KEY"
+  "SDK_KEY",
+  "TARGETING_RULE"
 ] as const;
 
 export type AuditAction = (typeof auditActions)[number];

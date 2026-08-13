@@ -16,6 +16,8 @@ import { Organization } from "../../../organizations/organization.entity";
 import { Project } from "../../../projects/project.entity";
 import { defaultEnvironments } from "../../../projects/projects.service";
 import { SdkKey } from "../../../sdk-keys/sdk-key.entity";
+import { TargetingRule } from "../../../targeting-rules/targeting-rule.entity";
+import { TargetingRuleOperator } from "../../../targeting-rules/targeting-rule-operator.enum";
 import { User } from "../../../users/user.entity";
 import { UserRole } from "../../../users/user-role.enum";
 
@@ -42,7 +44,25 @@ const demoFlags = [
   {
     description: "Controls access to the redesigned checkout experience.",
     environmentConfigs: {
-      development: { enabled: true, rolloutPercentage: 25, value: true },
+      development: {
+        enabled: true,
+        rolloutPercentage: 25,
+        targetingRules: [
+          {
+            attribute: "email",
+            comparisonValue: "@company.com",
+            operator: TargetingRuleOperator.EndsWith,
+            resultValue: true
+          },
+          {
+            attribute: "country",
+            comparisonValue: "IT",
+            operator: TargetingRuleOperator.Equals,
+            resultValue: true
+          }
+        ],
+        value: true
+      },
       production: { enabled: false, rolloutPercentage: 0, value: false },
       staging: { enabled: true, rolloutPercentage: 50, value: true }
     },
@@ -51,7 +71,19 @@ const demoFlags = [
   {
     description: "Enables the beta sidebar navigation treatment.",
     environmentConfigs: {
-      development: { enabled: true, rolloutPercentage: 100, value: true },
+      development: {
+        enabled: true,
+        rolloutPercentage: 100,
+        targetingRules: [
+          {
+            attribute: "plan",
+            comparisonValue: "PREMIUM",
+            operator: TargetingRuleOperator.Equals,
+            resultValue: true
+          }
+        ],
+        value: true
+      },
       production: { enabled: true, rolloutPercentage: 100, value: false },
       staging: { enabled: true, rolloutPercentage: 100, value: true }
     },
@@ -69,6 +101,7 @@ const seedDemoUser = async (): Promise<void> => {
   const organizations = dataSource.getRepository(Organization);
   const projects = dataSource.getRepository(Project);
   const sdkKeys = dataSource.getRepository(SdkKey);
+  const targetingRules = dataSource.getRepository(TargetingRule);
   const users = dataSource.getRepository(User);
   const refreshSessions = dataSource.getRepository(RefreshSession);
   const organizationKey = createKeyFromName(demoUser.organizationName);
@@ -185,7 +218,32 @@ const seedDemoUser = async (): Promise<void> => {
       existingConfig.enabled = desiredConfig.enabled;
       existingConfig.rolloutPercentage = desiredConfig.rolloutPercentage;
       existingConfig.value = desiredConfig.value;
-      await environmentFlagConfigs.save(existingConfig);
+      const savedConfig = await environmentFlagConfigs.save(existingConfig);
+
+      if ("targetingRules" in desiredConfig) {
+        for (const [index, desiredRule] of desiredConfig.targetingRules.entries()) {
+          let existingRule = await targetingRules.findOne({
+            where: {
+              attribute: desiredRule.attribute,
+              environmentFlagConfigId: savedConfig.id,
+              operator: desiredRule.operator
+            }
+          });
+
+          if (!existingRule) {
+            existingRule = targetingRules.create({
+              attribute: desiredRule.attribute,
+              environmentFlagConfigId: savedConfig.id,
+              operator: desiredRule.operator
+            });
+          }
+
+          existingRule.comparisonValue = desiredRule.comparisonValue;
+          existingRule.resultValue = desiredRule.resultValue;
+          existingRule.sortOrder = index + 1;
+          await targetingRules.save(existingRule);
+        }
+      }
     }
   }
 
@@ -274,6 +332,7 @@ const seedDemoUser = async (): Promise<void> => {
   console.log(`Seeded demo user: ${demoUser.email} / ${demoUser.password}`);
   console.log(`Seeded demo project: ${demoProject.name}`);
   console.log(`Seeded demo feature flags: ${demoFlags.map((flag) => flag.name).join(", ")}`);
+  console.log("Seeded demo targeting rules for development flags");
   console.log(`Seeded demo SDK key (${demoSdkKey.environmentKey}): ${demoSdkKey.secret}`);
 };
 

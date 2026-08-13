@@ -5,10 +5,12 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn
 } from "typeorm";
 import { Environment } from "../environments/environment.entity";
+import { TargetingRule } from "../targeting-rules/targeting-rule.entity";
 import { FeatureFlag } from "./feature-flag.entity";
 
 @Entity({ name: "environment_flag_configs" })
@@ -40,6 +42,9 @@ export class EnvironmentFlagConfig {
 
   @Column({ name: "rollout_percentage", type: "integer", default: 100 })
   rolloutPercentage!: number;
+
+  @OneToMany(() => TargetingRule, (targetingRule) => targetingRule.environmentFlagConfig)
+  targetingRules!: TargetingRule[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;

@@ -112,7 +112,7 @@ The system SHALL document strict UI/UX rules for future dashboard work.
 
 ### Requirement: Dashboard supports feature flag management
 
-The system SHALL provide dashboard routes and token-driven UI for managing boolean feature flags.
+The system SHALL provide dashboard routes and token-driven UI for managing boolean feature flags, per-environment rollout configuration, and targeting rules.
 
 #### Scenario: Flags navigation is available
 - **WHEN** an authenticated user views the dashboard shell after feature flag management is implemented
@@ -128,19 +128,31 @@ The system SHALL provide dashboard routes and token-driven UI for managing boole
 
 #### Scenario: Feature flag detail screen
 - **WHEN** an authenticated user opens a feature flag detail route
-- **THEN** the dashboard displays feature flag metadata and per-environment boolean configuration rows
+- **THEN** the dashboard displays feature flag metadata, per-environment boolean configuration rows, and targeting rule management for each environment configuration
+
+#### Scenario: Environment rollout control
+- **WHEN** an authenticated user edits a feature flag environment configuration
+- **THEN** the dashboard provides a compact rollout percentage control validated from 0 through 100 alongside enabled state and served boolean value
+
+#### Scenario: Targeting rule manager
+- **WHEN** an authenticated user manages rules for a feature flag environment configuration
+- **THEN** the dashboard provides dense ordered rule rows with create, edit, delete, and reorder actions using shared common controls
+
+#### Scenario: Targeting rule form validation
+- **WHEN** an authenticated user creates or edits a targeting rule
+- **THEN** the dashboard uses React Final Form and Zod validation for attribute, operator, comparison value, and boolean result fields
 
 #### Scenario: Feature flag empty state
 - **WHEN** a project has no feature flags
 - **THEN** the dashboard shows a themed empty state with a create-feature-flag action
 
 #### Scenario: Feature flag destructive confirmation
-- **WHEN** a user starts deleting a feature flag
+- **WHEN** a user starts deleting a feature flag or targeting rule
 - **THEN** the dashboard shows a themed confirmation dialog with cancel and destructive confirm actions
 
 #### Scenario: Feature flag responsive layout
 - **WHEN** flag management screens are viewed at 375px, 1024px, and 1440px
-- **THEN** navigation, forms, rows, toggles, badges, and actions fit without horizontal scrolling or incoherent overlap
+- **THEN** navigation, forms, rows, toggles, rollout controls, targeting rule controls, badges, and actions fit without horizontal scrolling or incoherent overlap
 
 ### Requirement: Dashboard supports SDK key management
 

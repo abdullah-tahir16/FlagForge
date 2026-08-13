@@ -8,5 +8,9 @@ export enum AuditAction {
   FeatureFlagDeleted = "FEATURE_FLAG_DELETED",
   FeatureFlagConfigUpdated = "FEATURE_FLAG_CONFIG_UPDATED",
   SdkKeyCreated = "SDK_KEY_CREATED",
-  SdkKeyRevoked = "SDK_KEY_REVOKED"
+  SdkKeyRevoked = "SDK_KEY_REVOKED",
+  TargetingRuleCreated = "TARGETING_RULE_CREATED",
+  TargetingRuleUpdated = "TARGETING_RULE_UPDATED",
+  TargetingRuleDeleted = "TARGETING_RULE_DELETED",
+  TargetingRuleReordered = "TARGETING_RULE_REORDERED"
 }

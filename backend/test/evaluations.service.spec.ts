@@ -4,11 +4,14 @@ import { FeatureFlag } from "../src/feature-flags/feature-flag.entity";
 import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
 import { EvaluationsService } from "../src/evaluations/evaluations.service";
 import { SdkEvaluationContext } from "../src/evaluations/sdk-evaluation-context";
+import { TargetingRule } from "../src/targeting-rules/targeting-rule.entity";
+import { TargetingRuleOperator } from "../src/targeting-rules/targeting-rule-operator.enum";
 
 interface MockFeatureFlagQueryBuilder {
+  addOrderBy: jest.MockedFunction<(sort: string, order: string) => MockFeatureFlagQueryBuilder>;
   getMany: jest.MockedFunction<() => Promise<FeatureFlag[]>>;
   leftJoinAndSelect: jest.MockedFunction<
-    (relation: string, alias: string, condition: string, params: { environmentId: string }) => MockFeatureFlagQueryBuilder
+    (relation: string, alias: string, condition?: string, params?: { environmentId: string }) => MockFeatureFlagQueryBuilder
   >;
   orderBy: jest.MockedFunction<(sort: string, order: string) => MockFeatureFlagQueryBuilder>;
   where: jest.MockedFunction<(query: string, params: { projectId: string }) => MockFeatureFlagQueryBuilder>;
@@ -54,6 +57,20 @@ const createConfig = (overrides: Partial<EnvironmentFlagConfig> = {}): Environme
     ...overrides
   }) as EnvironmentFlagConfig;
 
+const createRule = (overrides: Partial<TargetingRule> = {}): TargetingRule =>
+  ({
+    attribute: "country",
+    comparisonValue: "IT",
+    createdAt: now,
+    environmentFlagConfigId: "config-1",
+    id: "rule-1",
+    operator: TargetingRuleOperator.Equals,
+    resultValue: true,
+    sortOrder: 1,
+    updatedAt: now,
+    ...overrides
+  }) as TargetingRule;
+
 const createService = () => {
   const configs = new Map<string, EnvironmentFlagConfig>();
   const flags = new Map<string, FeatureFlag>();
@@ -62,6 +79,7 @@ const createService = () => {
       const state = { environmentId: "", projectId: "" };
       const builder = {} as MockFeatureFlagQueryBuilder;
 
+      builder.addOrderBy = jest.fn((_sort, _order) => builder);
       builder.getMany = jest.fn(async () =>
         Array.from(flags.values())
           .filter((flag) => flag.projectId === state.projectId)
@@ -77,7 +95,7 @@ const createService = () => {
           )
       );
       builder.leftJoinAndSelect = jest.fn((_relation, _alias, _condition, params) => {
-        state.environmentId = params.environmentId;
+        state.environmentId = params?.environmentId ?? state.environmentId;
         return builder;
       });
       builder.orderBy = jest.fn((_sort, _order) => builder);
@@ -179,6 +197,54 @@ describe("EvaluationsService", () => {
     });
   });
 
+  it("evaluates matching targeting rules before percentage rollout", async () => {
+    const { configs, flags, service } = createService();
+    flags.set("flag-1", createFlag());
+    configs.set(
+      "config-1",
+      createConfig({
+        rolloutPercentage: 0,
+        targetingRules: [
+          createRule({ attribute: "country", comparisonValue: "FR", resultValue: false, sortOrder: 1 }),
+          createRule({ attribute: "plan", comparisonValue: "PREMIUM", id: "rule-2", resultValue: true, sortOrder: 2 })
+        ]
+      })
+    );
+
+    await expect(service.evaluateOne(context, "new-checkout", { country: "IT", plan: "PREMIUM" })).resolves.toMatchObject({
+      reason: "TARGETING_RULE_MATCH",
+      targetingRule: { attribute: "plan", id: "rule-2", operator: TargetingRuleOperator.Equals },
+      value: true
+    });
+  });
+
+  it("uses first matching targeting rule and skips targeting for disabled flags", async () => {
+    const { configs, flags, service } = createService();
+    flags.set("flag-1", createFlag());
+    configs.set(
+      "config-1",
+      createConfig({
+        targetingRules: [
+          createRule({ attribute: "country", comparisonValue: "IT", resultValue: false, sortOrder: 1 }),
+          createRule({ attribute: "plan", comparisonValue: "PREMIUM", id: "rule-2", resultValue: true, sortOrder: 2 })
+        ]
+      })
+    );
+
+    await expect(service.evaluateOne(context, "new-checkout", { country: "IT", plan: "PREMIUM" })).resolves.toMatchObject({
+      reason: "TARGETING_RULE_MATCH",
+      targetingRule: { id: "rule-1" },
+      value: false
+    });
+
+    configs.set("config-1", createConfig({ enabled: false, targetingRules: [createRule()] }));
+    await expect(service.evaluateOne(context, "new-checkout", { country: "IT" })).resolves.toMatchObject({
+      reason: "DISABLED",
+      targetingRule: undefined,
+      value: false
+    });
+  });
+
   it("evaluates all project flags for the SDK key environment", async () => {
     const { configs, flags, service } = createService();
     flags.set("flag-1", createFlag({ key: "new-checkout" }));
@@ -216,6 +282,35 @@ describe("EvaluationsService", () => {
       reasons: {
         "beta-navigation": { reason: "PERCENTAGE_ROLLOUT", value: false },
         "new-checkout": { reason: "PERCENTAGE_ROLLOUT", value: true }
+      }
+    });
+  });
+
+  it("applies targeting behavior independently when evaluating all flags", async () => {
+    const { configs, flags, service } = createService();
+    flags.set("flag-1", createFlag({ key: "new-checkout" }));
+    flags.set("flag-2", createFlag({ id: "flag-2", key: "beta-navigation" }));
+    configs.set(
+      "config-1",
+      createConfig({ featureFlagId: "flag-1", targetingRules: [createRule({ attribute: "country", comparisonValue: "IT" })] })
+    );
+    configs.set(
+      "config-2",
+      createConfig({
+        featureFlagId: "flag-2",
+        id: "config-2",
+        targetingRules: [createRule({ attribute: "plan", comparisonValue: "PREMIUM", environmentFlagConfigId: "config-2", id: "rule-2" })]
+      })
+    );
+
+    await expect(service.evaluateAll(context, { country: "IT", plan: "PREMIUM" })).resolves.toMatchObject({
+      flags: {
+        "beta-navigation": true,
+        "new-checkout": true
+      },
+      reasons: {
+        "beta-navigation": { reason: "TARGETING_RULE_MATCH", targetingRule: { id: "rule-2" }, value: true },
+        "new-checkout": { reason: "TARGETING_RULE_MATCH", targetingRule: { id: "rule-1" }, value: true }
       }
     });
   });

@@ -108,8 +108,10 @@ const FeatureFlagDetail = ({
           <EnvironmentConfigList
             configs={featureFlag.environmentConfigs}
             errorMessage={updateEnvironmentConfigErrorMessage}
+            flagId={featureFlag.id}
             isSubmitting={isUpdatingEnvironmentFlagConfig}
             onSubmit={onEnvironmentConfigSubmit}
+            projectId={project.id}
             updatingEnvironmentId={updatingEnvironmentFlagConfigId}
             validate={environmentConfigValidate}
           />

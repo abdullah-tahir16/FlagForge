@@ -3,6 +3,7 @@ export type EvaluationReason =
   | "DISABLED"
   | "FLAG_NOT_FOUND"
   | "CONFIG_NOT_FOUND"
+  | "TARGETING_RULE_MATCH"
   | "PERCENTAGE_ROLLOUT"
   | "ROLLOUT_CONTEXT_MISSING";
 
@@ -18,12 +19,20 @@ export interface SingleEvaluationResponse {
   evaluatedAt: Date;
   key: string;
   reason: EvaluationReason;
+  targetingRule?: EvaluationTargetingRuleResponse;
   value: boolean;
 }
 
 export interface AllEvaluationFlagReason {
   reason: EvaluationReason;
+  targetingRule?: EvaluationTargetingRuleResponse;
   value: boolean;
+}
+
+export interface EvaluationTargetingRuleResponse {
+  attribute: string;
+  id: string;
+  operator: string;
 }
 
 export interface AllEvaluationsResponse {
