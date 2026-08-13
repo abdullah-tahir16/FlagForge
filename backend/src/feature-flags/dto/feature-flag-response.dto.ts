@@ -7,6 +7,7 @@ export interface EnvironmentFlagConfigResponse {
   environmentKey: string;
   environmentName: string;
   id: string;
+  rolloutPercentage: number;
   updatedAt: Date;
   value: boolean;
 }

@@ -41,8 +41,8 @@ tasks.md      implementation checklist
 | 4 | `add-boolean-feature-flags` | Archived | boolean flags, per-environment config, enable/disable |
 | 5 | `add-sdk-keys-and-evaluation-api` | Archived | SDK key creation, hashed keys, single/all flag evaluation APIs |
 | 6 | `add-dashboard-flag-management` | Planned | dashboard project/flag views, environment switching, flag toggling |
-| 7 | `add-audit-logs` | Active | audit events for important management operations |
-| 8 | `add-percentage-rollouts` | Planned | deterministic rollout buckets and rollout configuration |
+| 7 | `add-audit-logs` | Archived | audit events for important management operations |
+| 8 | `add-percentage-rollouts` | Active | deterministic rollout buckets and rollout configuration |
 | 9 | `add-targeting-rules` | Planned | ordered rules, attribute operators, first-match evaluation |
 | 10 | `add-segments` | Planned | reusable user segments and segment matching |
 | 11 | `add-redis-cache` | Planned | cached environment flag configuration and invalidation |

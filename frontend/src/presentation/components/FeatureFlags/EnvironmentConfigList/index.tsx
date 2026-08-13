@@ -6,14 +6,15 @@ import Button from "../../Common/Button";
 import DataList from "../../Common/DataList";
 import DataRow from "../../Common/DataRow";
 import Form from "../../Common/Form";
+import TextInput from "../../Common/TextInput";
 
 interface Props {
   configs: EnvironmentFlagConfig[];
   errorMessage?: string | null;
   isSubmitting: boolean;
-  onSubmit: (environmentId: string, values: Record<string, boolean>) => Promise<void>;
+  onSubmit: (environmentId: string, values: Record<string, unknown>) => Promise<void>;
   updatingEnvironmentId?: string;
-  validate: (values: Record<string, boolean>) => Partial<Record<string, string>>;
+  validate: (values: Record<string, unknown>) => Partial<Record<string, string>>;
 }
 
 const EnvironmentConfigList = ({ configs, errorMessage, isSubmitting, onSubmit, updatingEnvironmentId, validate }: Props) => (
@@ -26,7 +27,7 @@ const EnvironmentConfigList = ({ configs, errorMessage, isSubmitting, onSubmit, 
     <DataList>
       {configs.map((config) => (
         <FinalForm
-          initialValues={{ enabled: config.enabled, value: config.value }}
+          initialValues={{ enabled: config.enabled, rolloutPercentage: config.rolloutPercentage, value: config.value }}
           key={config.id}
           onSubmit={(values) => onSubmit(config.environmentId, values)}
           render={({ handleSubmit, submitting }) => (
@@ -54,9 +55,12 @@ const EnvironmentConfigList = ({ configs, errorMessage, isSubmitting, onSubmit, 
                     <Badge>{config.environmentKey}</Badge>
                     <Badge tone={config.enabled ? "success" : "neutral"}>{config.enabled ? "Enabled" : "Disabled"}</Badge>
                     <Badge tone={config.value ? "primary" : "neutral"}>{config.value ? "Serves true" : "Serves false"}</Badge>
+                    <Badge tone={config.rolloutPercentage === 100 ? "neutral" : "warning"}>
+                      Rollout {config.rolloutPercentage}%
+                    </Badge>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <Field<boolean> name="enabled" type="checkbox">
                     {({ input }) => {
                       const { checked, name, onBlur, onChange, onFocus } = input;
@@ -96,6 +100,23 @@ const EnvironmentConfigList = ({ configs, errorMessage, isSubmitting, onSubmit, 
                         </label>
                       );
                     }}
+                  </Field>
+                  <Field<number>
+                    name="rolloutPercentage"
+                    parse={(value) => (value === "" ? undefined : Number(value))}
+                    type="number"
+                  >
+                    {({ input, meta }) => (
+                      <TextInput
+                        error={meta.touched ? meta.error : undefined}
+                        inputMode="numeric"
+                        label="Rollout %"
+                        max={100}
+                        min={0}
+                        step={1}
+                        {...input}
+                      />
+                    )}
                   </Field>
                 </div>
               </Form>

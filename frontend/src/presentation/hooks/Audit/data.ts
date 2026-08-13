@@ -4,10 +4,13 @@ import type { AuditAction, AuditResourceType } from "../../../core/types/Audit";
 
 type BadgeTone = "danger" | "info" | "neutral" | "primary" | "success" | "warning";
 
+const optionalSelectValue = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.preprocess((value) => (value === undefined || value === null ? "" : value), z.union([z.literal(""), z.enum(values)]));
+
 export const auditFilterSchema = z.object({
-  action: z.union([z.literal(""), z.enum(auditActions)]),
-  projectId: z.string().trim(),
-  resourceType: z.union([z.literal(""), z.enum(auditResourceTypes)])
+  action: optionalSelectValue(auditActions),
+  projectId: z.preprocess((value) => (value === undefined || value === null ? "" : value), z.string().trim()),
+  resourceType: optionalSelectValue(auditResourceTypes)
 });
 
 export const auditActionLabels: Record<AuditAction, string> = {

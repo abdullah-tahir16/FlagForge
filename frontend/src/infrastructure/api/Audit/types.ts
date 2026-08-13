@@ -1,4 +1,5 @@
 import type { AuditAction, AuditResourceType, AuditSnapshot } from "../../../core/types/Audit";
+import type { CursorPaginationMetadata, CursorPaginationParams } from "../../../core/types/Pagination";
 
 export interface AuditLogResponseDto {
   action: AuditAction;
@@ -19,14 +20,12 @@ export interface AuditLogResponseDto {
 
 export interface AuditLogListResponseDto {
   entries: AuditLogResponseDto[];
-  nextCursor: string | null;
+  pagination: CursorPaginationMetadata;
 }
 
-export interface AuditLogFiltersRequestDto {
+export interface AuditLogFiltersRequestDto extends CursorPaginationParams {
   action?: AuditAction;
-  cursor?: string;
   environmentId?: string;
-  limit?: number;
   projectId?: string;
   resourceType?: AuditResourceType;
 }

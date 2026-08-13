@@ -36,7 +36,6 @@ interface MockAuditQueryBuilder {
   andWhere: jest.MockedFunction<(query: string, params: Record<string, unknown>) => MockAuditQueryBuilder>;
   getMany: jest.MockedFunction<() => Promise<AuditLog[]>>;
   orderBy: jest.MockedFunction<(sort: string, order: string) => MockAuditQueryBuilder>;
-  skip: jest.MockedFunction<(offset: number) => MockAuditQueryBuilder>;
   take: jest.MockedFunction<(limit: number) => MockAuditQueryBuilder>;
   where: jest.MockedFunction<(query: string, params: Record<string, unknown>) => MockAuditQueryBuilder>;
 }
@@ -48,9 +47,10 @@ const createService = () => {
     createQueryBuilder: jest.fn(() => {
       const state = {
         action: undefined as AuditAction | undefined,
+        cursorCreatedAt: undefined as Date | undefined,
+        cursorId: undefined as string | undefined,
         environmentId: undefined as string | undefined,
         limit: 25,
-        offset: 0,
         organizationId: "",
         projectId: undefined as string | undefined,
         resourceType: undefined as AuditResourceType | undefined
@@ -69,14 +69,24 @@ const createService = () => {
           .filter((auditLog) => !state.environmentId || auditLog.environmentId === state.environmentId)
           .filter((auditLog) => !state.resourceType || auditLog.resourceType === state.resourceType)
           .filter((auditLog) => !state.action || auditLog.action === state.action)
-          .sort((first, second) => second.createdAt.getTime() - first.createdAt.getTime())
-          .slice(state.offset, state.offset + state.limit)
+          .filter((auditLog) => {
+            if (!state.cursorCreatedAt || !state.cursorId) {
+              return true;
+            }
+
+            return (
+              auditLog.createdAt.getTime() < state.cursorCreatedAt.getTime() ||
+              (auditLog.createdAt.getTime() === state.cursorCreatedAt.getTime() && auditLog.id < state.cursorId)
+            );
+          })
+          .sort((first, second) => {
+            const createdAtDiff = second.createdAt.getTime() - first.createdAt.getTime();
+
+            return createdAtDiff || second.id.localeCompare(first.id);
+          })
+          .slice(0, state.limit)
       );
       builder.orderBy = jest.fn((_sort: string, _order: string) => builder);
-      builder.skip = jest.fn((offset: number) => {
-        state.offset = offset;
-        return builder;
-      });
       builder.take = jest.fn((limit: number) => {
         state.limit = limit;
         return builder;
@@ -178,6 +188,26 @@ describe("AuditService", () => {
     });
 
     expect(result.entries).toEqual([expect.objectContaining({ id: "audit-4", organizationId: "org-1" })]);
-    expect(result.nextCursor).toBe("1");
+    expect(result.pagination).toMatchObject({
+      hasNextPage: true,
+      limit: 1,
+      nextCursor: expect.any(String)
+    });
+
+    const nextPage = await service.findAll(user, {
+      action: AuditAction.EnvironmentUpdated,
+      cursor: result.pagination.nextCursor as string,
+      environmentId: "environment-1",
+      limit: 1,
+      projectId: "project-1",
+      resourceType: AuditResourceType.Environment
+    });
+
+    expect(nextPage.entries).toEqual([expect.objectContaining({ id: "audit-2", organizationId: "org-1" })]);
+    expect(nextPage.pagination).toEqual({
+      hasNextPage: false,
+      limit: 1,
+      nextCursor: null
+    });
   });
 });

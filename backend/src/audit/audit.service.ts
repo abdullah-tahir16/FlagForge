@@ -2,14 +2,16 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import type { AuthenticatedUser } from "../auth/authenticated-user";
+import {
+  applyCreatedAtCursorPagination,
+  createCursorPaginatedResponse,
+  resolveCursorPaginationLimit
+} from "../common/pagination/cursor-pagination";
 import type { AuditContext, AuditRecordInput } from "./audit-context";
 import { sanitizeAuditSnapshot } from "./audit-context";
 import { AuditLog } from "./audit-log.entity";
 import type { AuditLogListResponse, AuditLogResponse } from "./dto/audit-log-response.dto";
 import type { ListAuditLogsDto } from "./dto/list-audit-logs.dto";
-
-const defaultLimit = 25;
-const maxLimit = 100;
 
 @Injectable()
 export class AuditService {
@@ -40,15 +42,10 @@ export class AuditService {
   }
 
   async findAll(user: AuthenticatedUser, filters: ListAuditLogsDto = {}): Promise<AuditLogListResponse> {
-    const limit = Math.min(Math.max(filters.limit ?? defaultLimit, 1), maxLimit);
-    const offset = this.parseCursor(filters.cursor);
+    const limit = resolveCursorPaginationLimit(filters.limit);
     const query = this.auditLogsRepository
       .createQueryBuilder("auditLog")
-      .where("auditLog.organization_id = :organizationId", { organizationId: user.organizationId })
-      .orderBy("auditLog.created_at", "DESC")
-      .addOrderBy("auditLog.id", "DESC")
-      .skip(offset)
-      .take(limit + 1);
+      .where("auditLog.organization_id = :organizationId", { organizationId: user.organizationId });
 
     if (filters.projectId) {
       query.andWhere("auditLog.project_id = :projectId", { projectId: filters.projectId });
@@ -66,19 +63,16 @@ export class AuditService {
       query.andWhere("auditLog.action = :action", { action: filters.action });
     }
 
-    const auditLogs = await query.getMany();
-    const entries = auditLogs.slice(0, limit);
+    const auditLogs = await applyCreatedAtCursorPagination(query, {
+      alias: "auditLog",
+      cursor: filters.cursor,
+      limit
+    }).getMany();
 
-    return {
-      entries: entries.map((auditLog) => this.toResponse(auditLog)),
-      nextCursor: auditLogs.length > limit ? String(offset + limit) : null
-    };
-  }
-
-  private parseCursor(cursor: string | undefined): number {
-    const parsedCursor = Number(cursor);
-
-    return Number.isInteger(parsedCursor) && parsedCursor > 0 ? parsedCursor : 0;
+    return createCursorPaginatedResponse(auditLogs, {
+      limit,
+      toEntry: (auditLog) => this.toResponse(auditLog)
+    });
   }
 
   private toResponse(auditLog: AuditLog): AuditLogResponse {

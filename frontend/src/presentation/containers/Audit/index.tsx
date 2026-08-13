@@ -32,6 +32,8 @@ const AuditContainer = (_props: Props) => {
         onClearFilters={feature.onClearFilters}
         onNextPage={feature.onNextPage}
         onPreviousPage={feature.onPreviousPage}
+        pageNumber={feature.pageNumber}
+        pagination={feature.pagination}
         validateFilters={feature.validateFilters}
       />
     </AppShell>

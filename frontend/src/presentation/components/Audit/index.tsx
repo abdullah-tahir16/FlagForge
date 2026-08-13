@@ -1,6 +1,7 @@
 import { Field, Form as FinalForm } from "react-final-form";
-import { Activity, ArrowLeft, ArrowRight, Filter, ScrollText } from "lucide-react";
+import { Activity, Filter, ScrollText } from "lucide-react";
 import type { AuditLog } from "../../../core/types/Audit";
+import type { CursorPaginationMetadata } from "../../../core/types/Pagination";
 import { auditActions, auditResourceTypes } from "../../../core/types/Audit";
 import Alert from "../Common/Alert";
 import Badge from "../Common/Badge";
@@ -9,6 +10,7 @@ import DataList from "../Common/DataList";
 import DataRow from "../Common/DataRow";
 import EmptyState from "../Common/EmptyState";
 import Form from "../Common/Form";
+import PaginationControls from "../Common/PaginationControls";
 import Select from "../Common/Select";
 import Skeleton from "../Common/Skeleton";
 import TextInput from "../Common/TextInput";
@@ -28,6 +30,8 @@ interface Props {
   onClearFilters: () => void;
   onNextPage: () => void;
   onPreviousPage: () => void;
+  pageNumber: number;
+  pagination: CursorPaginationMetadata;
   validateFilters: (values: Record<string, string>) => Partial<Record<string, string>>;
 }
 
@@ -43,6 +47,8 @@ const Audit = ({
   onClearFilters,
   onNextPage,
   onPreviousPage,
+  pageNumber,
+  pagination,
   validateFilters
 }: Props) => (
   <section className="min-w-0">
@@ -186,20 +192,14 @@ const Audit = ({
       </DataList>
     ) : null}
 
-    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-      <Button disabled={!canGoPrevious || isLoadingAuditLogs} onClick={onPreviousPage} type="button" variant="secondary">
-        <span className="inline-flex items-center gap-2">
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          Previous
-        </span>
-      </Button>
-      <Button disabled={!canGoNext || isLoadingAuditLogs} onClick={onNextPage} type="button" variant="secondary">
-        <span className="inline-flex items-center gap-2">
-          Next
-          <ArrowRight aria-hidden="true" className="h-4 w-4" />
-        </span>
-      </Button>
-    </div>
+    <PaginationControls
+      canGoNext={canGoNext}
+      canGoPrevious={canGoPrevious}
+      isLoading={isLoadingAuditLogs || isRefetchingAuditLogs}
+      onNextPage={onNextPage}
+      onPreviousPage={onPreviousPage}
+      pageLabel={`Page ${pageNumber} · ${auditLogs.length} of ${pagination.limit} shown`}
+    />
   </section>
 );
 

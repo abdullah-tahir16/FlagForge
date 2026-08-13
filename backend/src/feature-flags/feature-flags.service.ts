@@ -78,6 +78,7 @@ export class FeatureFlagsService {
             enabled: false,
             environmentId: environment.id,
             featureFlagId: savedFlag.id,
+            rolloutPercentage: 100,
             value: false
           })
         )
@@ -225,6 +226,10 @@ export class FeatureFlagsService {
       config.value = dto.value;
     }
 
+    if (dto.rolloutPercentage !== undefined) {
+      config.rolloutPercentage = dto.rolloutPercentage;
+    }
+
     await this.environmentFlagConfigsRepository.save(config);
     await this.auditService.record(
       user,
@@ -274,6 +279,7 @@ export class FeatureFlagsService {
           environmentKey: config.environment?.key ?? "",
           environmentName: config.environment?.name ?? "",
           id: config.id,
+          rolloutPercentage: config.rolloutPercentage,
           updatedAt: config.updatedAt,
           value: config.value
         })),
@@ -308,6 +314,10 @@ export class FeatureFlagsService {
 
     if (dto.value !== undefined) {
       snapshot.value = config.value;
+    }
+
+    if (dto.rolloutPercentage !== undefined) {
+      snapshot.rolloutPercentage = config.rolloutPercentage;
     }
 
     return snapshot;

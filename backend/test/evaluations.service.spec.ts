@@ -48,6 +48,7 @@ const createConfig = (overrides: Partial<EnvironmentFlagConfig> = {}): Environme
     environmentId: "environment-1",
     featureFlagId: "flag-1",
     id: "config-1",
+    rolloutPercentage: 100,
     updatedAt: now,
     value: true,
     ...overrides
@@ -136,6 +137,48 @@ describe("EvaluationsService", () => {
     });
   });
 
+  it("evaluates percentage rollouts deterministically", async () => {
+    const { configs, flags, service } = createService();
+    flags.set("flag-1", createFlag());
+    configs.set("config-1", createConfig({ rolloutPercentage: 25, value: true }));
+
+    await expect(service.evaluateOne(context, "new-checkout", { userId: "c" })).resolves.toMatchObject({
+      reason: "PERCENTAGE_ROLLOUT",
+      value: true
+    });
+    await expect(service.evaluateOne(context, "new-checkout", { userId: "alice" })).resolves.toMatchObject({
+      reason: "PERCENTAGE_ROLLOUT",
+      value: false
+    });
+    await expect(service.evaluateOne(context, "new-checkout", { userId: "c" })).resolves.toMatchObject({
+      reason: "PERCENTAGE_ROLLOUT",
+      value: true
+    });
+  });
+
+  it("handles rollout edges and missing rollout context safely", async () => {
+    const { configs, flags, service } = createService();
+    flags.set("flag-1", createFlag());
+
+    configs.set("config-1", createConfig({ rolloutPercentage: 0, value: true }));
+    await expect(service.evaluateOne(context, "new-checkout", { userId: "c" })).resolves.toMatchObject({
+      reason: "PERCENTAGE_ROLLOUT",
+      value: false
+    });
+
+    configs.set("config-1", createConfig({ rolloutPercentage: 25, value: true }));
+    await expect(service.evaluateOne(context, "new-checkout")).resolves.toMatchObject({
+      reason: "ROLLOUT_CONTEXT_MISSING",
+      value: false
+    });
+
+    configs.set("config-1", createConfig({ enabled: false, rolloutPercentage: 25, value: true }));
+    await expect(service.evaluateOne(context, "new-checkout", { userId: "c" })).resolves.toMatchObject({
+      reason: "DISABLED",
+      value: false
+    });
+  });
+
   it("evaluates all project flags for the SDK key environment", async () => {
     const { configs, flags, service } = createService();
     flags.set("flag-1", createFlag({ key: "new-checkout" }));
@@ -151,6 +194,28 @@ describe("EvaluationsService", () => {
       reasons: {
         "beta-navigation": { reason: "DISABLED", value: false },
         "new-checkout": { reason: "STATIC", value: true }
+      }
+    });
+  });
+
+  it("applies rollout behavior independently when evaluating all flags", async () => {
+    const { configs, flags, service } = createService();
+    flags.set("flag-1", createFlag({ key: "new-checkout" }));
+    flags.set("flag-2", createFlag({ id: "flag-2", key: "beta-navigation" }));
+    configs.set("config-1", createConfig({ featureFlagId: "flag-1", rolloutPercentage: 25, value: true }));
+    configs.set(
+      "config-2",
+      createConfig({ featureFlagId: "flag-2", id: "config-2", rolloutPercentage: 25, value: true })
+    );
+
+    await expect(service.evaluateAll(context, { userId: "c" })).resolves.toMatchObject({
+      flags: {
+        "beta-navigation": false,
+        "new-checkout": true
+      },
+      reasons: {
+        "beta-navigation": { reason: "PERCENTAGE_ROLLOUT", value: false },
+        "new-checkout": { reason: "PERCENTAGE_ROLLOUT", value: true }
       }
     });
   });

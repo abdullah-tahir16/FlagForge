@@ -82,6 +82,23 @@ Use this structure for frontend domains:
 - Respect reduced motion through shared motion tokens and `prefers-reduced-motion`.
 - Verify app UI at 375px mobile, 1024px desktop, and 1440px desktop when changing shell, auth, project, or environment screens.
 
+## Pagination
+
+- Prefer cursor pagination for list APIs that can grow over time, especially audit logs, events, activity feeds, SDK key lists, and future flag/segment history screens.
+- Backend cursor-paginated endpoints should use the shared helpers under `backend/src/common/pagination/`.
+- Backend list responses should return a stable envelope:
+  - `entries`: the current page items.
+  - `pagination.hasNextPage`: whether a next page exists.
+  - `pagination.limit`: the bounded page size actually used by the backend.
+  - `pagination.nextCursor`: an opaque cursor string or `null`.
+- Do not expose cursor internals to the frontend. Treat cursors as opaque values.
+- Backend DTOs should bound `limit`, accept optional `cursor`, and keep filtering fields separate from pagination fields.
+- Frontend domain types should reuse `CursorPaginationParams` and `CursorPaginatedList` from `frontend/src/core/types/Pagination`.
+- Frontend screens should use `useCursorPagination` from `frontend/src/presentation/hooks/Common` for cursor stack state instead of hand-rolling previous/next behavior.
+- Frontend screens should render pagination through `PaginationControls` from `frontend/src/presentation/components/Common/PaginationControls` when the standard previous/next UX is sufficient.
+- Applying or clearing filters must reset pagination to the first page.
+- Changing page must preserve the active filters and only change the cursor.
+
 ## Backend Guidance
 
 - Use NestJS modules by domain.

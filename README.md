@@ -84,7 +84,7 @@ POST /api/v1/sdk/evaluate
 
 Authentication uses a short-lived access token returned in JSON and a rotating refresh token stored as an httpOnly cookie. The refresh token is stored only as a hash in PostgreSQL and is not exposed to frontend JavaScript.
 
-The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, Development, Staging, and Production environments, plus `New Checkout` and `Beta Navigation` boolean feature flags for local dashboard testing. It also creates representative audit entries and this local Development SDK key:
+The demo seed creates the `Demo Labs` organization, `Checkout Platform` project, Development, Staging, and Production environments, plus `New Checkout` and `Beta Navigation` boolean feature flags for local dashboard testing. `New Checkout` includes representative rollout percentages: Development 25%, Staging 50%, and Production 0%. It also creates representative audit entries and this local Development SDK key:
 
 ```text
 ff_development_sk_local_demo_key
@@ -103,6 +103,8 @@ curl -X POST http://localhost:3001/api/v1/sdk/evaluate \
   -H "X-FlagForge-Key: ff_development_sk_local_demo_key" \
   -d '{"userId":"user-123"}'
 ```
+
+SDK evaluation request bodies accept `userId` for percentage rollout bucketing and may include additional primitive context attributes for future targeting. Partial rollouts without `userId` fail safely to `false` with `ROLLOUT_CONTEXT_MISSING`.
 
 ## Project Progress
 
@@ -746,7 +748,7 @@ evaluation should immediately return:
 ```json
 {
   "value": false,
-  "reason": "FLAG_DISABLED"
+  "reason": "DISABLED"
 }
 ```
 
@@ -787,10 +789,10 @@ Math.random() < 0.25
 
 That would make the feature randomly turn on and off between requests.
 
-Instead use:
+Instead use environment, flag, and user identity:
 
 ```text
-flagKey + userId
+environmentId + flagKey + userId
       ↓
 hash
       ↓
@@ -800,7 +802,7 @@ bucket 0-99
 For example:
 
 ```javascript
-const value = hash(`${flagKey}:${userId}`);
+const value = hash(`${environmentId}:${flagKey}:${userId}`);
 
 const bucket = value % 100;
 
@@ -1403,11 +1405,20 @@ Response:
 
 ```json
 {
+  "environment": {
+    "id": "environment-id",
+    "key": "production",
+    "name": "Production",
+    "projectId": "project-id"
+  },
+  "evaluatedAt": "2026-08-13T00:00:00.000Z",
   "key": "new-checkout",
-  "value": true,
-  "reason": "STATIC"
+  "reason": "PERCENTAGE_ROLLOUT",
+  "value": true
 }
 ```
+
+Reasons include `STATIC`, `DISABLED`, `PERCENTAGE_ROLLOUT`, `ROLLOUT_CONTEXT_MISSING`, `FLAG_NOT_FOUND`, and `CONFIG_NOT_FOUND`.
 
 ---
 
@@ -1433,10 +1444,23 @@ Response:
 
 ```json
 {
+  "environment": {
+    "id": "environment-id",
+    "key": "production",
+    "name": "Production",
+    "projectId": "project-id"
+  },
+  "evaluatedAt": "2026-08-13T00:00:00.000Z",
   "flags": {
     "new-checkout": true,
     "recommendations-v2": false,
     "dark-mode": true
+  },
+  "reasons": {
+    "new-checkout": {
+      "reason": "PERCENTAGE_ROLLOUT",
+      "value": true
+    }
   }
 }
 ```

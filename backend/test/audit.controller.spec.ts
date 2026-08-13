@@ -32,7 +32,11 @@ describe("AuditController", () => {
         resourceType: AuditResourceType.Project
       }
     ],
-    nextCursor: null
+    pagination: {
+      hasNextPage: false,
+      limit: 25,
+      nextCursor: null
+    }
   };
 
   const createController = () => {

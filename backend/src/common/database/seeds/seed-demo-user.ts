@@ -42,18 +42,18 @@ const demoFlags = [
   {
     description: "Controls access to the redesigned checkout experience.",
     environmentConfigs: {
-      development: { enabled: true, value: true },
-      production: { enabled: false, value: false },
-      staging: { enabled: true, value: true }
+      development: { enabled: true, rolloutPercentage: 25, value: true },
+      production: { enabled: false, rolloutPercentage: 0, value: false },
+      staging: { enabled: true, rolloutPercentage: 50, value: true }
     },
     name: "New Checkout"
   },
   {
     description: "Enables the beta sidebar navigation treatment.",
     environmentConfigs: {
-      development: { enabled: true, value: true },
-      production: { enabled: true, value: false },
-      staging: { enabled: true, value: true }
+      development: { enabled: true, rolloutPercentage: 100, value: true },
+      production: { enabled: true, rolloutPercentage: 100, value: false },
+      staging: { enabled: true, rolloutPercentage: 100, value: true }
     },
     name: "Beta Navigation"
   }
@@ -168,6 +168,7 @@ const seedDemoUser = async (): Promise<void> => {
     for (const environment of savedEnvironments) {
       const desiredConfig = demoFlag.environmentConfigs[environment.key as keyof typeof demoFlag.environmentConfigs] ?? {
         enabled: false,
+        rolloutPercentage: 100,
         value: false
       };
       let existingConfig = await environmentFlagConfigs.findOne({
@@ -182,6 +183,7 @@ const seedDemoUser = async (): Promise<void> => {
       }
 
       existingConfig.enabled = desiredConfig.enabled;
+      existingConfig.rolloutPercentage = desiredConfig.rolloutPercentage;
       existingConfig.value = desiredConfig.value;
       await environmentFlagConfigs.save(existingConfig);
     }
@@ -227,8 +229,12 @@ const seedDemoUser = async (): Promise<void> => {
           actorEmail: savedUser.email,
           actorUserId: savedUser.id,
           environmentId: developmentEnvironment.id,
-          newValue: { enabled: checkoutConfig.enabled, value: checkoutConfig.value },
-          oldValue: { enabled: false, value: false },
+          newValue: {
+            enabled: checkoutConfig.enabled,
+            rolloutPercentage: checkoutConfig.rolloutPercentage,
+            value: checkoutConfig.value
+          },
+          oldValue: { enabled: false, rolloutPercentage: 100, value: false },
           organizationId: organization.id,
           projectId: savedProject.id,
           resourceId: checkoutConfig.id,

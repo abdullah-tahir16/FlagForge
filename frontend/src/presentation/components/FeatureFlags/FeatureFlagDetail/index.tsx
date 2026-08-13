@@ -10,7 +10,7 @@ import EnvironmentConfigList from "../EnvironmentConfigList";
 import FeatureFlagForm from "../FeatureFlagForm";
 
 interface Props {
-  environmentConfigValidate: (values: Record<string, boolean>) => Partial<Record<string, string>>;
+  environmentConfigValidate: (values: Record<string, unknown>) => Partial<Record<string, string>>;
   featureFlag?: FeatureFlag;
   featureFlagErrorMessage?: string | null;
   featureFlagInitialValues: Record<string, string>;
@@ -19,7 +19,7 @@ interface Props {
   isLoadingProject: boolean;
   isUpdatingEnvironmentFlagConfig: boolean;
   isUpdatingFeatureFlag: boolean;
-  onEnvironmentConfigSubmit: (environmentId: string, values: Record<string, boolean>) => Promise<void>;
+  onEnvironmentConfigSubmit: (environmentId: string, values: Record<string, unknown>) => Promise<void>;
   onFeatureFlagSubmit: (values: Record<string, string>) => Promise<void>;
   project?: Project;
   projectErrorMessage?: string | null;

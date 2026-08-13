@@ -9,6 +9,10 @@ export const useAuditUseCase = (filters: AuditLogFilters) => {
     auditLogsError: auditLogsQuery.error,
     isLoadingAuditLogs: auditLogsQuery.isLoading,
     isRefetchingAuditLogs: auditLogsQuery.isFetching && !auditLogsQuery.isLoading,
-    nextCursor: auditLogsQuery.data?.nextCursor ?? null
+    pagination: auditLogsQuery.data?.pagination ?? {
+      hasNextPage: false,
+      limit: filters.limit ?? 25,
+      nextCursor: null
+    }
   };
 };

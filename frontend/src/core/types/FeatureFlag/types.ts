@@ -7,6 +7,7 @@ export interface EnvironmentFlagConfig {
   environmentKey: string;
   environmentName: string;
   id: string;
+  rolloutPercentage: number;
   updatedAt: string;
   value: boolean;
 }
@@ -35,5 +36,6 @@ export interface UpdateFeatureFlagInput {
 
 export interface UpdateEnvironmentFlagConfigInput {
   enabled?: boolean;
+  rolloutPercentage?: number;
   value?: boolean;
 }

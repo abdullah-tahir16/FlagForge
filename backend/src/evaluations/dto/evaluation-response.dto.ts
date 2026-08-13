@@ -1,4 +1,10 @@
-export type EvaluationReason = "STATIC" | "DISABLED" | "FLAG_NOT_FOUND" | "CONFIG_NOT_FOUND";
+export type EvaluationReason =
+  | "STATIC"
+  | "DISABLED"
+  | "FLAG_NOT_FOUND"
+  | "CONFIG_NOT_FOUND"
+  | "PERCENTAGE_ROLLOUT"
+  | "ROLLOUT_CONTEXT_MISSING";
 
 export interface EvaluationEnvironmentResponse {
   id: string;

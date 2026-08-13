@@ -15,7 +15,7 @@ export const toAuditFilters = (values: {
   action?: string;
   projectId?: string;
   resourceType?: string;
-}): AuditLogFilters => ({
+}): Omit<AuditLogFilters, "cursor" | "limit"> => ({
   action: (values.action || undefined) as AuditAction | undefined,
   projectId: values.projectId?.trim() || undefined,
   resourceType: (values.resourceType || undefined) as AuditResourceType | undefined

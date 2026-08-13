@@ -16,7 +16,7 @@ export const useFeatureFlagDetailFeature = () => {
   const featureFlags = useFeatureFlagUseCase(projectId, flagId);
   const projects = useProjectUseCase(projectId);
 
-  const onEnvironmentConfigSubmit = async (environmentId: string, values: Record<string, boolean>) => {
+  const onEnvironmentConfigSubmit = async (environmentId: string, values: Record<string, unknown>) => {
     if (!projectId || !flagId) {
       return;
     }

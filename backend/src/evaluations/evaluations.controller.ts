@@ -1,4 +1,5 @@
-import { Controller, Headers, HttpCode, Param, Post } from "@nestjs/common";
+import { Body, Controller, Headers, HttpCode, Param, Post } from "@nestjs/common";
+import { SdkEvaluationRequest } from "./dto/evaluation-request.dto";
 import { AllEvaluationsResponse, SingleEvaluationResponse } from "./dto/evaluation-response.dto";
 import { EvaluationsService } from "./evaluations.service";
 import { SdkAuthService, sdkKeyHeaderName } from "./sdk-auth.service";
@@ -12,20 +13,24 @@ export class EvaluationsController {
 
   @Post("evaluate")
   @HttpCode(200)
-  async evaluateAll(@Headers(sdkKeyHeaderName) sdkKey: string | string[] | undefined): Promise<AllEvaluationsResponse> {
+  async evaluateAll(
+    @Headers(sdkKeyHeaderName) sdkKey: string | string[] | undefined,
+    @Body() evaluationContext: SdkEvaluationRequest = {}
+  ): Promise<AllEvaluationsResponse> {
     const context = await this.sdkAuthService.authenticate(sdkKey);
 
-    return this.evaluationsService.evaluateAll(context);
+    return this.evaluationsService.evaluateAll(context, evaluationContext);
   }
 
   @Post("evaluate/:flagKey")
   @HttpCode(200)
   async evaluateOne(
     @Headers(sdkKeyHeaderName) sdkKey: string | string[] | undefined,
-    @Param("flagKey") flagKey: string
+    @Param("flagKey") flagKey: string,
+    @Body() evaluationContext: SdkEvaluationRequest = {}
   ): Promise<SingleEvaluationResponse> {
     const context = await this.sdkAuthService.authenticate(sdkKey);
 
-    return this.evaluationsService.evaluateOne(context, flagKey);
+    return this.evaluationsService.evaluateOne(context, flagKey, evaluationContext);
   }
 }

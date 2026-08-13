@@ -1,6 +1,7 @@
 import type { AuditSnapshot } from "../audit-context";
 import type { AuditAction } from "../audit-action.enum";
 import type { AuditResourceType } from "../audit-resource-type.enum";
+import type { CursorPaginatedResponse } from "../../common/pagination/cursor-pagination";
 
 export interface AuditLogResponse {
   action: AuditAction;
@@ -19,7 +20,4 @@ export interface AuditLogResponse {
   resourceType: AuditResourceType;
 }
 
-export interface AuditLogListResponse {
-  entries: AuditLogResponse[];
-  nextCursor: string | null;
-}
+export type AuditLogListResponse = CursorPaginatedResponse<AuditLogResponse>;

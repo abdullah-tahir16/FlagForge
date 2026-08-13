@@ -38,6 +38,9 @@ export class EnvironmentFlagConfig {
   @Column({ type: "boolean", default: false })
   value!: boolean;
 
+  @Column({ name: "rollout_percentage", type: "integer", default: 100 })
+  rolloutPercentage!: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 

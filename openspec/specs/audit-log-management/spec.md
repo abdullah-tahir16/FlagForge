@@ -1,0 +1,91 @@
+# audit-log-management Specification
+
+## Purpose
+
+Define organization-scoped audit event persistence, management API listing, filtering, pagination, and dashboard audit log visibility.
+
+## Requirements
+
+### Requirement: Audit logs are organization scoped
+
+The system SHALL scope every audit log entry to exactly one organization.
+
+#### Scenario: Audit entry belongs to organization
+- **WHEN** the system records an audit event for an authenticated management operation
+- **THEN** the audit entry stores the authenticated user's organization id
+
+#### Scenario: Cross-organization audit access
+- **WHEN** an authenticated user lists audit entries
+- **THEN** the system returns only audit entries for that user's organization
+
+### Requirement: Audit entries capture actor and resource metadata
+
+The system SHALL store useful actor, action, resource, context, and timestamp metadata for each audit entry.
+
+#### Scenario: Audit entry metadata
+- **WHEN** the system records an audit event
+- **THEN** it stores actor user id, actor email, action, resource type, resource id, resource name when available, project id when available, environment id when available, IP address when available, and creation timestamp
+
+#### Scenario: Deleted resource remains readable
+- **WHEN** a resource is deleted after audit entries exist
+- **THEN** the audit entries remain readable without requiring the deleted resource row
+
+### Requirement: Audit entries capture safe old and new values
+
+The system SHALL store safe old and new value snapshots for mutation events where practical.
+
+#### Scenario: Update value snapshots
+- **WHEN** a management operation changes editable resource data
+- **THEN** the audit entry includes old and new value snapshots for the changed fields
+
+#### Scenario: Sensitive values are excluded
+- **WHEN** the system records an audit event
+- **THEN** it does not store raw SDK secrets, password hashes, refresh tokens, JWTs, or cookie values
+
+### Requirement: User can list audit logs
+
+The system SHALL allow an authenticated user to list audit logs for their organization.
+
+#### Scenario: Audit list
+- **WHEN** an authenticated user requests audit logs
+- **THEN** the system returns organization-scoped audit entries ordered by newest first
+
+#### Scenario: Empty audit list
+- **WHEN** an authenticated user requests audit logs and none exist
+- **THEN** the system returns an empty list
+
+### Requirement: User can filter audit logs
+
+The system SHALL allow an authenticated user to filter audit logs by common operational dimensions.
+
+#### Scenario: Filter by project
+- **WHEN** an authenticated user requests audit logs for a project id in their organization
+- **THEN** the system returns matching audit entries for that project
+
+#### Scenario: Filter by resource type
+- **WHEN** an authenticated user requests audit logs for a resource type
+- **THEN** the system returns matching audit entries for that resource type
+
+#### Scenario: Filter by action
+- **WHEN** an authenticated user requests audit logs for an action
+- **THEN** the system returns matching audit entries for that action
+
+### Requirement: Audit log listing is paginated
+
+The system SHALL paginate audit log listing responses.
+
+#### Scenario: Limited audit results
+- **WHEN** an authenticated user requests audit logs with a valid limit
+- **THEN** the system returns no more than that number of entries
+
+#### Scenario: Next page token
+- **WHEN** more audit entries are available after the current page
+- **THEN** the system returns metadata that allows the next page to be requested
+
+### Requirement: Demo workflow has audit entries
+
+The system SHALL make audit log behavior visible in the local demo workflow.
+
+#### Scenario: Local audit entries exist
+- **WHEN** a developer runs local demo workflows after seeding
+- **THEN** the dashboard can show representative audit entries without manual database edits

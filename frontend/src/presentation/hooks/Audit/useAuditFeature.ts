@@ -6,6 +6,7 @@ import { useAppUseCase } from "../../../infrastructure/useCases/App/useAppUseCas
 import { useAuditUseCase } from "../../../infrastructure/useCases/Audit/useAuditUseCase";
 import { useAuthUseCase } from "../../../infrastructure/useCases/Auth/useAuthUseCase";
 import { validateWithSchema } from "../Auth/fns";
+import { useCursorPagination } from "../Common/useCursorPagination";
 import { auditFilterSchema } from "./data";
 import { getAuditFilterValues, toAuditFilters } from "./fns";
 
@@ -16,42 +17,37 @@ export const useAuditFeature = () => {
   const auth = useAuthUseCase();
   const currentOrganizationQuery = useCurrentOrganization();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<AuditLogFilters>({ limit: auditPageLimit });
-  const [previousCursors, setPreviousCursors] = useState<string[]>([]);
+  const pagination = useCursorPagination();
+  const [activeFilters, setActiveFilters] = useState<Omit<AuditLogFilters, "cursor" | "limit">>({});
+  const filters = useMemo<AuditLogFilters>(
+    () => ({
+      ...activeFilters,
+      cursor: pagination.cursor,
+      limit: auditPageLimit
+    }),
+    [activeFilters, pagination.cursor]
+  );
   const audit = useAuditUseCase(filters);
 
-  const filterInitialValues = useMemo(() => getAuditFilterValues(filters), [filters]);
+  const filterInitialValues = useMemo(() => getAuditFilterValues(activeFilters), [activeFilters]);
 
   const onApplyFilters = async (values: Record<string, string>) => {
     const parsedValues = auditFilterSchema.parse(values);
-    setPreviousCursors([]);
-    setFilters({
-      ...toAuditFilters(parsedValues),
-      limit: auditPageLimit
-    });
+    pagination.resetPagination();
+    setActiveFilters(toAuditFilters(parsedValues));
   };
 
   const onClearFilters = () => {
-    setPreviousCursors([]);
-    setFilters({ limit: auditPageLimit });
+    pagination.resetPagination();
+    setActiveFilters({});
   };
 
   const onNextPage = () => {
-    if (!audit.nextCursor) {
-      return;
-    }
-
-    setPreviousCursors((cursors) => [...cursors, filters.cursor ?? ""]);
-    setFilters((currentFilters) => ({ ...currentFilters, cursor: audit.nextCursor ?? undefined }));
+    pagination.goToNextPage(audit.pagination);
   };
 
   const onPreviousPage = () => {
-    setPreviousCursors((cursors) => {
-      const nextCursors = [...cursors];
-      const previousCursor = nextCursors.pop();
-      setFilters((currentFilters) => ({ ...currentFilters, cursor: previousCursor || undefined }));
-      return nextCursors;
-    });
+    pagination.goToPreviousPage();
   };
 
   const onLogout = async () => {
@@ -62,8 +58,8 @@ export const useAuditFeature = () => {
   return {
     auditErrorMessage: audit.auditLogsError ? "Audit logs could not be loaded." : null,
     auditLogs: audit.auditLogs,
-    canGoNext: Boolean(audit.nextCursor),
-    canGoPrevious: previousCursors.length > 0,
+    canGoNext: audit.pagination.hasNextPage,
+    canGoPrevious: pagination.canGoPrevious,
     currentOrganization: currentOrganizationQuery.data,
     currentUser: auth.currentUser,
     filterInitialValues,
@@ -74,6 +70,8 @@ export const useAuditFeature = () => {
     onLogout,
     onNextPage,
     onPreviousPage,
+    pageNumber: pagination.pageNumber,
+    pagination: audit.pagination,
     title: "Audit",
     validateFilters: validateWithSchema(auditFilterSchema),
     ...app

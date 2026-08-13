@@ -1,8 +1,11 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import { AuditAction } from "../src/audit/audit-action.enum";
 import { AuditService } from "../src/audit/audit.service";
 import { AuthenticatedUser } from "../src/auth/authenticated-user";
 import { Environment } from "../src/environments/environment.entity";
+import { UpdateEnvironmentFlagConfigDto } from "../src/feature-flags/dto/update-environment-flag-config.dto";
 import { EnvironmentFlagConfig } from "../src/feature-flags/environment-flag-config.entity";
 import { FeatureFlag } from "../src/feature-flags/feature-flag.entity";
 import { FeatureFlagType } from "../src/feature-flags/feature-flag-type.enum";
@@ -61,6 +64,7 @@ const createConfig = (overrides: Partial<EnvironmentFlagConfig> = {}): Environme
     environmentId: "environment-1",
     featureFlagId: "flag-1",
     id: "config-1",
+    rolloutPercentage: 100,
     updatedAt: now,
     value: false,
     ...overrides
@@ -330,17 +334,18 @@ describe("FeatureFlagsService", () => {
 
     const updated = await service.updateEnvironmentConfig(owner, "project-1", "flag-1", "environment-1", {
       enabled: true,
+      rolloutPercentage: 25,
       value: true
     });
 
-    expect(updated.environmentConfigs[0]).toMatchObject({ enabled: true, value: true });
+    expect(updated.environmentConfigs[0]).toMatchObject({ enabled: true, rolloutPercentage: 25, value: true });
     expect(auditService.record).toHaveBeenCalledWith(
       owner,
       expect.objectContaining({
         action: AuditAction.FeatureFlagConfigUpdated,
         environmentId: "environment-1",
-        newValue: { enabled: true, value: true },
-        oldValue: { enabled: false, value: false },
+        newValue: { enabled: true, rolloutPercentage: 25, value: true },
+        oldValue: { enabled: false, rolloutPercentage: 100, value: false },
         projectId: "project-1"
       }),
       undefined
@@ -353,6 +358,24 @@ describe("FeatureFlagsService", () => {
     projectsService.findProjectForUser.mockRejectedValueOnce(new NotFoundException("Project was not found"));
 
     await expect(service.findAll(owner, "project-2")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("validates rollout percentage update bounds", async () => {
+    await expect(
+      validate(plainToInstance(UpdateEnvironmentFlagConfigDto, { rolloutPercentage: 0 }))
+    ).resolves.toHaveLength(0);
+    await expect(
+      validate(plainToInstance(UpdateEnvironmentFlagConfigDto, { rolloutPercentage: 100 }))
+    ).resolves.toHaveLength(0);
+    await expect(
+      validate(plainToInstance(UpdateEnvironmentFlagConfigDto, { rolloutPercentage: -1 }))
+    ).resolves.not.toHaveLength(0);
+    await expect(
+      validate(plainToInstance(UpdateEnvironmentFlagConfigDto, { rolloutPercentage: 101 }))
+    ).resolves.not.toHaveLength(0);
+    await expect(
+      validate(plainToInstance(UpdateEnvironmentFlagConfigDto, { rolloutPercentage: 12.5 }))
+    ).resolves.not.toHaveLength(0);
   });
 
   it("rejects feature flag ids that do not belong to the selected project", async () => {

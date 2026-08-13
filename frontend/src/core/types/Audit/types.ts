@@ -1,3 +1,5 @@
+import type { CursorPaginatedList, CursorPaginationParams } from "../Pagination";
+
 export const auditActions = [
   "PROJECT_CREATED",
   "PROJECT_UPDATED",
@@ -40,16 +42,11 @@ export interface AuditLog {
   resourceType: AuditResourceType;
 }
 
-export interface AuditLogFilters {
+export interface AuditLogFilters extends CursorPaginationParams {
   action?: AuditAction;
-  cursor?: string;
   environmentId?: string;
-  limit?: number;
   projectId?: string;
   resourceType?: AuditResourceType;
 }
 
-export interface AuditLogList {
-  entries: AuditLog[];
-  nextCursor: string | null;
-}
+export type AuditLogList = CursorPaginatedList<AuditLog>;
